@@ -1,20 +1,7 @@
 #!/bin/bash
-
 function root_inari() {
-    echo "    ........................."
-    echo "   "
-    echo "      Which is your device?"
-    echo "   "
-    echo "    ........................."
-    echo "   "
-    echo "Connect your phone to USB, then:"
-    echo "Settings -> Device information -> More Information -> Developer"
-    echo "and enable 'Remote debugging'"
-    echo
-
     tmpf=/tmp/root-zte-open.$$
     while true ; do
-
         adb wait-for-device
         adb push root/root-zte-open /data/local/tmp/
         adb shell /data/local/tmp/root-zte-open |tee $tmpf
@@ -30,29 +17,52 @@ function root_inari() {
             rm $tmpf
         else
             echo "Enjoy!"
-            exit
+            main
         fi
     done
 }
 
 function root_hamachi() {
-    echo test
+    echo "** Sorry, we are working on a root for this device. **"
+    sleep 5
+    echo "             **Returning to main menu**"
+    sleep 1
+    main
 }
 
 function root_leo() {
-    echo "We are working on a root for this device. Thanks"
+    echo "** Sorry, we are working on a root for this device. **"
+    sleep 5
+    echo "             **Returning to main menu**"
+    sleep 1
+    main
 }
 
 function root_helix() {
-    echo "We are working on a root for this device. Thanks"
+    echo "** Sorry, we are working on a root for this device. **"
+    sleep 5
+    echo "             **Returning to main menu**"
+    sleep 1
+    main
 }
 
-function root() {
-    echo "    ........................."
+function update_accepted() {
+    #
+    main
+}
+
+function root_accepted() {
     echo "   "
-    echo "      Which is your device?"
+    echo "   ..................................................."
     echo "   "
-    echo "    ........................."
+    echo "                  Which is your device?"
+    echo "   "
+    echo "   "
+    echo "   Connect your phone to USB, then:"
+    echo "   "
+    echo "   Settings -> Device information -> More Information"
+    echo "   -> Developer and enable 'Remote debugging'"
+    echo "   ..................................................."
     echo "   "
     PS3='#: '
     options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
@@ -79,32 +89,62 @@ function root() {
     done
 }
 
-function update_accepted() {
-    ./adb reboot bootloader
-    ./fastboot flash boot update/boot.img
-    echo "Do you want to keep your user data ? (Some users has problems in first reboot, if you have, please reflash and select not to keep the data)"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) break;;
-            No ) ./fastboot flash userdata update/userdata.img; break;;
+function root() {
+    echo "   "
+    echo "   ..................................................."
+    echo "   "
+    echo "                      Disclaimer"
+    echo "   "
+    echo "   By downloading and using this root way you accept"
+    echo "   that your warranty is void and we are not in no way"
+    echo "   responsible for any damage or data loss may incur."
+    echo "   "
+    echo "   We are not responsible for bricked devices, dead SD"
+    echo "   cards, or you getting fired because the alarm app" 
+    echo "   failed. Please do some research if you have any"
+    echo "   concerns about this update before flashing it."
+    echo "   "
+    echo "   ..................................................."
+    echo "   "
+    PS3='Do you agree?: '
+    options=("Yes" "No" "Quit")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Yes")
+                root_accepted
+                ;;
+            "No")
+                echo "** You don't agree **";
+                sleep 3
+                main
+                ;;
+            "Quit")
+                exit 0
+                break
+                ;;
+            *) echo "** Invalid option **";;
         esac
     done
-    ./fastboot flash system update/system.img
-    ./fastboot flash recovery update/recovery.img
-    ./fastboot erase cache
-    ./fastboot reboot
-    echo "Done!"
 }
 
 function update() {
-    echo " "
-    echo "    **********************************"
-    echo "    *                                *"
-    echo "    *    Disclaimer explanation      *"
-    echo "    *         bla bla bla            *"
-    echo "    *                                *"
-    echo "    **********************************"
-    echo " "
+    echo "   "
+    echo "   ..................................................."
+    echo "   "
+    echo "                      Disclaimer"
+    echo "   "
+    echo "   By downloading and installing the update you accept"
+    echo "   that your warranty is void and we are not in no way"
+    echo "   responsible for any damage or data loss may incur."
+    echo "   "
+    echo "   We are not responsible for bricked devices, dead SD"
+    echo "   cards, or you getting fired because the alarm app" 
+    echo "   failed. Please do some research if you have any"
+    echo "   concerns about this update before flashing it."
+    echo "   "
+    echo "   ..................................................."
+    echo "   "
     PS3='Do you agree?: '
     options=("Yes" "No" "Quit")
     select opt in "${options[@]}"
@@ -114,7 +154,8 @@ function update() {
                 update_accepted
                 ;;
             "No")
-                echo "You reject it!";
+                echo "** You don't agree **";
+                sleep 3
                 main
                 ;;
             "Quit")
@@ -128,13 +169,13 @@ function update() {
 
 function main() {
     echo " "
-    echo "    **********************************"
-    echo "    *                                *"
-    echo "    *    Community update system     *"
-    echo "    *                                *"
-    echo "    *      firefoxosbuilds.org       *"
-    echo "    *                                *"
-    echo "    **********************************"
+    echo "          **********************************"
+    echo "          *                                *"
+    echo "          *    Community update system     *"
+    echo "          *                                *"
+    echo "          *      firefoxosbuilds.org       *"
+    echo "          *                                *"
+    echo "          **********************************"
     echo " "
     PS3='#?: '
     options=("Root your device" "Update your device" "Quit")
