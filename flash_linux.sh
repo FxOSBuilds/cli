@@ -130,5 +130,4 @@ function main() {
     done
 }
 
-# I know, i love functions :P
 main
