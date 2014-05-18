@@ -7,6 +7,32 @@ function root_inari() {
     echo "   "
     echo "    ........................."
     echo "   "
+    echo "Connect your phone to USB, then:"
+    echo "Settings -> Device information -> More Information -> Developer"
+    echo "and enable 'Remote debugging'"
+    echo
+
+    tmpf=/tmp/root-zte-open.$$
+    while true ; do
+
+        adb wait-for-device
+        adb push root/root-zte-open /data/local/tmp/
+        adb shell /data/local/tmp/root-zte-open |tee $tmpf
+        cat $tmpf |grep "Got root"  >/dev/null 2>&1
+        if [ $? != 0 ]; then
+            echo "Exploit failed, rebooting and trying again!"
+            echo "  "
+            echo "Not unplug your device if the device frezes or is stucked on boot logo."
+            echo "Just use the power button to turn off your device and turn on again to"
+            echo "try again the exploit."
+            echo
+            adb reboot
+            rm $tmpf
+        else
+            echo "Enjoy!"
+            exit
+        fi
+    done
 }
 
 function root_hamachi() {
