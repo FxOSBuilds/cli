@@ -1,5 +1,13 @@
 #!/bin/bash
 
+blue=$(tput setaf 4)
+red=$(tput setaf 1)
+white=$(tput setaf 7)
+green=$(tput setaf 2)
+cyan=$(tput setaf 6)
+underline=$(tput smul)
+normal=$(tput sgr0)
+
 function downgrade_inari_root_success() {
     echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
     select yn in "Yes" "No"; do
@@ -442,34 +450,83 @@ function update() {
     done
 }
 
-function main() {
-    echo " "
-    echo "          **********************************"
-    echo "          *                                *"
-    echo "          *    Community update system     *"
-    echo "          *                                *"
-    echo "          *      firefoxosbuilds.org       *"
-    echo "          *                                *"
-    echo "          **********************************"
-    echo " "
-    PS3='#?: '
-    options=("Root your device" "Update your device" "Quit")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "Root your device")
-    			root
-    			;;
-            "Update your device")
-                update
-                ;;
-            "Quit")
-    			exit 0
-                break
-                ;;
-            *) echo "** Invalid option **";;
-        esac
-    done
+function main() {   
+    echo ""
+    echo "                   ${green}################################################################"
+    echo "                   ${cyan}################################################################"
+    echo "                   ${cyan}####################                        ####################"
+    echo "               ${green}<<<${cyan} ####                                                        #### ${green}>>>"
+    echo "             <<<<<${cyan} ####                                                        #### ${green}>>>>>"
+    echo "             <<<<<${cyan} ####              ${normal}FirefoxOS Builds installer${cyan}                #### ${green}>>>>>"
+    echo "             <<<<<${cyan} ####                                                        #### ${green}>>>>>"
+    echo "               <<<${cyan} ####                                                        #### ${green}>>>"
+    echo "                   ${cyan}####################                        ####################"
+    echo "                   ${cyan}################################################################"
+    echo "                   ${green}################################################################"
+    echo ""
+    echo ""
+    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of your selection & follow the"
+    echo "  prompts."
+    echo ""
+    echo ""
+    echo "             1)  Clean FirefoxOS Builds installer folder structure"
+    echo "             2)  Root your device"
+    echo "             3)  Update your device"
+    echo "             4)  Copy update file to FirefoxOS Builds updates folder"
+    echo "           -------------------------------------------------------------"
+    echo "             5)  TBD"
+    echo "             6)  TBD"
+    echo "             7)  TBD"
+    echo "             8)  TBD"
+    echo "           -------------------------------------------------------------"
+    echo "             9)  TBD"
+    echo "             10) TBD"
+    echo "             11) TBD"
+    echo "           -------------------------------------------------------------"
+    echo "             12) TBD"
+    echo "             13) Exit"
+    echo ""
+    read mainmen 
+    if [ "$mainmen" == 1 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 2 ] ; then
+        root
+    elif [ "$mainmen" == 3 ] ; then
+        update
+    elif [ "$mainmen" == 4 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 5 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 6 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 7 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 8 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 9 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 10 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 11 ] ; then
+        echo "Not implemented"
+    elif [ "$mainmen" == 12 ] ; then 
+        echo "Not implemented"
+    elif [ "$mainmen" == 13 ] ; then
+        echo ""
+        echo "                    ------------------------------------------"
+        echo "                        Exiting FirefoxOS Builds installer   "
+        sleep 2
+        clear
+        exit
+    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 3 ] && [ "$mainmen" != 4 ] && [ "$mainmen" != 5 ] && [ "$mainmen" != 6 ] && [ "$mainmen" != 7 ] && [ "$mainmen" != 8 ] && [ "$mainmen" != 9 ] && [ "$mainmen" != 10 ] && [ "$mainmen" != 11 ] && [ "$mainmen" != 12 ]; then
+        echo ""
+        echo ""
+        echo "                        Enter a valid number   "
+        echo ""
+        sleep 3
+        main
+    fi
+
 }
 
 main
