@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Colors
 blue=$(tput setaf 4)
 red=$(tput setaf 1)
 white=$(tput setaf 7)
@@ -7,6 +8,11 @@ green=$(tput setaf 2)
 cyan=$(tput setaf 6)
 underline=$(tput smul)
 normal=$(tput sgr0)
+
+# Update
+B2G_OBJDIR="update/gecko/b2g"
+GAIA_INSTALL_PARENT="/system/b2g"
+files_dir="files/"
 
 function downgrade_inari_root_success() {
     echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
@@ -155,34 +161,6 @@ function root_inari_ready() {
     done
 }
 
-function root_leo_ready() {
-    echo ""
-    echo "Detecting the device"
-    ./adb wait-for-device
-    echo "adb shell work in process"
-    ./adb shell "rm /data/gpscfg/gps_env.conf 2>/dev/null"
-    ./adb shell "ln -s /data /data/gpscfg/gps_env.conf"
-    echo "Rebooting the device ...."
-    ./adb reboot
-    ./adb wait-for-device
-    echo "¿Exploit?"
-    ./adb shell "echo 'ro.kernel.qemu=1' > /data/local.prop"
-    ./adb reboot
-    ./adb wait-for-device}
-    echo "Remounting"
-    ./adb remount
-    echo "Pushing SU"
-    ./adb push root/su /system/bin/su
-    ./adb shell "chmod 6755 /system/bin/su"
-    ./adb shell "ln -s /system/bin/su /system/xbin/su"
-    echo "Cleaning up"
-    ./adb shell "rm /data/local.prop"
-    ./adb shell "rm /data/gpscfg/*"
-    ./adb shell "chmod 771 /data/"
-    echo "Rebooting"
-    ./adb reboot
-}
-
 function root_inari() {
     echo "   "
     echo "               ** IMPORTANT **"
@@ -212,23 +190,11 @@ function root_hamachi() {
 }
 
 function root_leo() {
-    echo "   "
-    echo "               ** IMPORTANT **"
-    echo "   "
-    echo "   Connect your phone to USB, then:"
-    echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
-    echo "   "
-    echo "This is a non-test exploit and not sure about it works"
-    echo "are you sure to continue?"
-    echo "   "
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) root_leo_ready; break;;
-            No ) main; break;;
-        esac
-    done
+    echo "** Sorry, we are working on a root for this device. **"
+    sleep 5
+    echo "             **Returning to main menu**"
+    sleep 1
+    main
 }
 
 function root_helix() {
@@ -261,70 +227,130 @@ function update_inari_ready() {
     echo "Updated!"
 }
 
-function update_inari() {
-    echo "You need to device rooted to install the"
-    echo "update. Is your ZTE Open rooted?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) update_inari_ready; break;;
-            No ) echo "** You need to root your device first **"; main; break;;
+function delete_extra_gecko_files_on_device() {
+    files_to_remove="$(cat <(ls $B2G_OBJDIR) <(run_adb shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
+    if [ "$files_to_remove" != "" ]; then
+        ./${files_dir}adb shell "cd /system/b2g && rm $files_to_remove" > /dev/null
+    fi
+    return 0
+}
+
+function verify_update() {
+    echo "Was your device updated?"
+    PS3='?: '
+    options=("Yes" "No" "Back menu")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Yes")
+                "Nice"
+                main
+                ;;
+            "No")
+                echo "Please, contact us. We will look what we can do for you."
+                sleep 2
+                main
+                ;;
+            *) echo "** Invalid option **";;
         esac
     done
 }
 
-function update_hamachi() {
-    echo "** Sorry, we are working on an update process for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
+function go_update() {
+    # Working on gecko
+    echo "Flashing Gecko"
+    echo " "
+    ./${files_dir}adb wait-for-device
+    ./${files_dir}adb shell stop b2g &&
+    ./${files_dir}adb remount &&
+    delete_extra_gecko_files_on_device &&
+    ./${files_dir}adb push $B2G_OBJDIR /system/b2g &&
+    echo " "
+    echo "Restarting B2G ...." &&
+    echo " "
+    ./${files_dir}adb shell start b2g
 
-function update_leo() {
-    echo "** Sorry, we are working on an update process for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
+    # Working on gaia
+    echo "Flashing Gaia"
+    echo " "
+    ./${files_dir}adb shell stop b2g
+    for FILE in `run_adb shell ls /data/local | tr -d '\r'`;
+    do
+        if [ $FILE != 'tmp' ]; then
+            ./${files_dir}adb shell rm -r /data/local/$FILE
+        fi
+    done
+    ./${files_dir}adb shell rm -r /cache/*
+    ./${files_dir}adb shell rm -r /data/b2g/*
+    ./${files_dir}adb shell rm -r /data/local/webapps
+    ./${files_dir}adb remount
+    ./${files_dir}adb shell rm -r /system/b2g/webapps
 
-function update_helix() {
-    echo "** Sorry, we are working on an update process for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
+    echo " "
+    echo "Installing Gaia"
+    ./${files_dir}adb start-server
+    ./${files_dir}adb shell stop b2g 
+    ./${files_dir}adb shell rm -r /cache/*
+    echo ""
+    echo "Remounting partition to start the gaia install"
+    ./${files_dir}adb remount
+    cd update/gaia
+    python ../install-gaia.py "adb" ${GAIA_INSTALL_PARENT}
+    cd ..
+    echo ""
+    echo "Gaia installed"
+    echo ""
+    echo "Starting system"
+    ./${files_dir}adb shell start b2g
+    echo ""
+    echo "..."
+    # install default data
+    ./${files_dir}adb shell stop b2g
+    echo "......"
+    run_adb remount
+    echo "........."
+    ./${files_dir}adb push gaia/profile/settings.json /system/b2g/defaults/settings.json
+    #ifdef CONTACTS_PATH
+    #    ./${files_dir}adb push profile/contacts.json /system/b2g/defaults/contacts.json
+    #else
+    echo "............"
+    ./${files_dir}adb shell rm /system/b2g/defaults/contacts.json
+    #endif
+    echo "${green}DONE!"
+    ./${files_dir}adb shell start b2g
+    echo " "
+    echo "Let's back"
+    verify_update
 }
 
 function update_accepted() {
+    echo "${green}   "
+    echo "       ............................................................."
+    echo "${cyan}   "
+    echo "             Is your device rooted?"
     echo "   "
-    echo "   ..................................................."
     echo "   "
-    echo "                  Which is your device?"
+    echo "             Connect your phone to USB, then:"
     echo "   "
-    echo "   "
-    echo "   Connect your phone to USB, then:"
-    echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
-    echo "   ..................................................."
-    echo "   "
+    echo "             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'"
+    echo "${green}  "
+    echo "       ............................................................."
+    echo "${normal}   "
     PS3='#: '
-    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
-            "ZTE Open")
-                update_inari
+            "Yes")
+                echo "The update process will start in 5 seconds"
+                sleep 5
+                go_update
                 ;;
-            "Alcatel One Touch Fire")
-                update_hamachi
-                ;;
-            "LG Fireweb")
-                update_leo
-                ;;
-            "Huawei Y300")
-                update_helix
+            "No")
+                echo "You need to be root first to update"
+                sleep 2
+                root
                 ;;
             "Back menu")
                 main
@@ -335,18 +361,19 @@ function update_accepted() {
 }
 
 function root_accepted() {
+    echo "${green}   "
+    echo "       ............................................................."
+    echo "${cyan}   "
+    echo "             Which is your device?"
     echo "   "
-    echo "   ..................................................."
     echo "   "
-    echo "                  Which is your device?"
+    echo "             Connect your phone to USB, then:"
     echo "   "
-    echo "   "
-    echo "   Connect your phone to USB, then:"
-    echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
-    echo "   ..................................................."
-    echo "   "
+    echo "             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'"
+    echo "${green}  "
+    echo "       ............................................................."
+    echo "${normal}   "
     PS3='#: '
     options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
     select opt in "${options[@]}"
@@ -374,21 +401,21 @@ function root_accepted() {
 
 function root() {
     echo "   "
-    echo "   ..................................................."
+    echo "${green}       ............................................................."
+    echo "${cyan}   "
+    echo "                              Disclaimer"
     echo "   "
-    echo "                      Disclaimer"
+    echo "             By downloading and installing the root you accept"
+    echo "             that your warranty is void and we are not in no way"
+    echo "             responsible for any damage or data loss may incur."
+    echo "  "
+    echo "             We are not responsible for bricked devices, dead SD"
+    echo "             cards, or you getting fired because the alarm app" 
+    echo "             failed. Please do some research if you have any"
+    echo "             concerns about this update before flashing it."
     echo "   "
-    echo "   By downloading and using this root way you accept"
-    echo "   that your warranty is void and we are not in no way"
-    echo "   responsible for any damage or data loss may incur."
-    echo "   "
-    echo "   We are not responsible for bricked devices, dead SD"
-    echo "   cards, or you getting fired because the alarm app" 
-    echo "   failed. Please do some research if you have any"
-    echo "   concerns about this update before flashing it."
-    echo "   "
-    echo "   ..................................................."
-    echo "   "
+    echo "${green}       ............................................................."
+    echo "${normal}   "
     PS3='Do you agree?: '
     options=("Yes" "No" "Quit")
     select opt in "${options[@]}"
@@ -413,21 +440,21 @@ function root() {
 
 function update() {
     echo "   "
-    echo "   ..................................................."
+    echo "${green}       ............................................................."
+    echo "${cyan}   "
+    echo "                              Disclaimer"
     echo "   "
-    echo "                      Disclaimer"
+    echo "             By downloading and installing the update you accept"
+    echo "             that your warranty is void and we are not in no way"
+    echo "             responsible for any damage or data loss may incur."
+    echo "  "
+    echo "             We are not responsible for bricked devices, dead SD"
+    echo "             cards, or you getting fired because the alarm app" 
+    echo "             failed. Please do some research if you have any"
+    echo "             concerns about this update before flashing it."
     echo "   "
-    echo "   By downloading and installing the update you accept"
-    echo "   that your warranty is void and we are not in no way"
-    echo "   responsible for any damage or data loss may incur."
-    echo "   "
-    echo "   We are not responsible for bricked devices, dead SD"
-    echo "   cards, or you getting fired because the alarm app" 
-    echo "   failed. Please do some research if you have any"
-    echo "   concerns about this update before flashing it."
-    echo "   "
-    echo "   ..................................................."
-    echo "   "
+    echo "${green}       ............................................................."
+    echo "${normal}   "
     PS3='Do you agree?: '
     options=("Yes" "No" "Quit")
     select opt in "${options[@]}"
@@ -452,47 +479,42 @@ function update() {
 
 function main() {   
     echo ""
-    echo "                   ${green}################################################################"
-    echo "                   ${cyan}################################################################"
-    echo "                   ${cyan}####################                        ####################"
-    echo "               ${green}<<<${cyan} ####                                                        #### ${green}>>>"
-    echo "             <<<<<${cyan} ####                                                        #### ${green}>>>>>"
-    echo "             <<<<<${cyan} ####              ${normal}FirefoxOS Builds installer${cyan}                #### ${green}>>>>>"
-    echo "             <<<<<${cyan} ####                                                        #### ${green}>>>>>"
-    echo "               <<<${cyan} ####                                                        #### ${green}>>>"
-    echo "                   ${cyan}####################                        ####################"
-    echo "                   ${cyan}################################################################"
-    echo "                   ${green}################################################################"
+    echo "${green}       ............................................................."
+    echo " "
+    echo " "
+    echo " "
+    echo "    ${cyan}                   ${cyan}FirefoxOS Builds installer       "
+    echo " "
+    echo " "
+    echo " "
+    echo "${green}       ............................................................."
     echo ""
     echo ""
-    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of your selection & follow the"
-    echo "  prompts."
+    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter "
+    echo "  the number of your selection & follow the prompts."
     echo ""
     echo ""
-    echo "             1)  Clean FirefoxOS Builds installer folder structure"
-    echo "             2)  Root your device"
-    echo "             3)  Update your device"
-    echo "             4)  Copy update file to FirefoxOS Builds updates folder"
-    echo "           -------------------------------------------------------------"
-    echo "             5)  TBD"
-    echo "             6)  TBD"
-    echo "             7)  TBD"
-    echo "             8)  TBD"
-    echo "           -------------------------------------------------------------"
-    echo "             9)  TBD"
-    echo "             10) TBD"
-    echo "             11) TBD"
-    echo "           -------------------------------------------------------------"
-    echo "             12) TBD"
-    echo "             13) Exit"
+    echo "      1)  Root your device"
+    echo "      2)  Update your device"
+    echo "      3)  Clean fxosbuilds sdcard folder"
+    echo "      4)  Download the latest update"
+    echo "      5)  TBD"
+    echo "      6)  TBD"
+    echo "      7)  TBD"
+    echo "      8)  TBD"
+    echo "      9)  TBD"
+    echo "      10) TBD"
+    echo "      11) TBD"
+    echo "      12) TBD"
+    echo "      13) Exit"
     echo ""
     read mainmen 
     if [ "$mainmen" == 1 ] ; then
-        echo "Not implemented"
+        root 
     elif [ "$mainmen" == 2 ] ; then
-        root
-    elif [ "$mainmen" == 3 ] ; then
         update
+    elif [ "$mainmen" == 3 ] ; then
+        echo "Not implemented"
     elif [ "$mainmen" == 4 ] ; then
         echo "Not implemented"
     elif [ "$mainmen" == 5 ] ; then
@@ -516,17 +538,15 @@ function main() {
         echo "                    ------------------------------------------"
         echo "                        Exiting FirefoxOS Builds installer   "
         sleep 2
-        clear
-        exit
+        exit 0
     elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 3 ] && [ "$mainmen" != 4 ] && [ "$mainmen" != 5 ] && [ "$mainmen" != 6 ] && [ "$mainmen" != 7 ] && [ "$mainmen" != 8 ] && [ "$mainmen" != 9 ] && [ "$mainmen" != 10 ] && [ "$mainmen" != 11 ] && [ "$mainmen" != 12 ]; then
         echo ""
         echo ""
         echo "                        Enter a valid number   "
         echo ""
-        sleep 3
+        sleep 2
         main
     fi
-
 }
 
 main
