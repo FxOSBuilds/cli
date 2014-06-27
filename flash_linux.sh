@@ -14,6 +14,10 @@ B2G_OBJDIR="update/gecko/b2g"
 GAIA_INSTALL_PARENT="/system/b2g"
 files_dir="files/"
 
+function pause(){
+   read -p "$*"
+}
+
 function downgrade_inari_root_success() {
     echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
     select yn in "Yes" "No"; do
@@ -24,92 +28,169 @@ function downgrade_inari_root_success() {
     done
 }
 
-function adb_root() {
+function adb_inari_root() {
     echo ""
+    rm -r boot-init
+    ./adb shell "rm /sdcard/fxosbuilds/newboot.img"
     echo "Creating a copy of boot.img"
     ./adb shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
     echo "building the workspace"
     mkdir boot-init
-    cp mkbootfs boot-init
-    cp mkbootimg boot-init
-    cp default.prop boot-init
+    cp ${files_dir}mkbootfs boot-init/mkbootfs
+    cp ${files_dir}mkbootimg boot-init/mkbootimg
+    cp ${files_dir}inari-default.prop boot-init/default.prop
+    cp ${files_dir}inari-init.b2g.rc boot-init/init.b2g.rc
     cd boot-init
+    echo "Copying your boot.img copy"
+    ../adb pull /sdcard/fxosbuilds/boot.img
+    abootimg -x boot.img
+    mkdir initrd
+    cd initrd 
+    echo "ready?????"
+    mv ../initrd.img initrd.gz
+    echo "Boot change process"
+    gunzip initrd.gz
+    cpio -id < initrd
+    rm default.prop
+    rm init.b2g.rc
+    sleep 30
+    echo "New default.prop and init.b2g.rc"
+    cd ..
+    mv mkbootfs initrd/mkbootfs
+    mv default.prop initrd/default.prop
+    mv init.b2g.rc initrd/init.b2g.rc
+    cd initrd
+    ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
+    cd ..
+    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
+    cd ..
+    ./adb push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
+    ./adb shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
+    echo "Success!"
+    sleep 3
+}
+
+function adb_hamachi_root() {
+    echo ""
+    rm -r boot-init
+    ./adb shell "rm /sdcard/fxosbuilds/newboot.img"
+    echo "Creating a copy of boot.img"
+    ./adb shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
+    echo "building the workspace"
+    mkdir boot-init
+    cp ${files_dir}mkbootfs boot-init/mkbootfs
+    cp ${files_dir}mkbootimg boot-init/mkbootimg
+    cp ${files_dir}hamachi-default.prop boot-init/default.prop
+    cd boot-init
+    echo "Copying your boot.img copy"
     ./adb pull /sdcard/fxosbuilds/boot.img
     abootimg -x boot.img
     mkdir initrd
     cd initrd 
     mv ../initrd.img initrd.gz
-    echo "boot change process"
+    echo "Boot change process"
     gunzip initrd.gz
     cpio -id < initrd
     rm default.prop
-    echo "new default.prop"
+    echo "New default.prop"
     cd ..
-    mv mkbootfs initrd/
-    mv default.prop initrd/
+    mv mkbootfs initrd/mkbootfs
+    mv default.prop initrd/default.prop
     cd initrd
     ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
     cd ..
-    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
-    ./adb push newboot.img /sdcard/fxosbuilds/newboot.img
+    cd ..
+    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=hamachi' -o newboot.img
+    ./adb push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
     ./adb shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
     echo "Success!"
     sleep 3
-    main
 }
 
 function downgrade_inari() {
-    echo "Pushing files to sdcard for downgrade"
-    ./adb push root/update-base-inari.zip /sdcard/fxosbuilds/update-base-inari.zip
-    echo "          **Files pushed correct to device**"
-    sleep 3
-    echo "   "
-    echo "   ..................................................."
-    echo "   "
-    echo "                    Steps to downgrade"
-    echo "   "
-    echo "   We pushed a files to your sdcard:"
-    echo "   "
-    echo "   1. update-base-inari.zip"
-    echo "   "
-    echo "   We are going to"
-    echo "   Your phone will reboot in recovery mode, so follow"
-    echo "   those steps:"
-    echo "   "
-    echo "   a. Use Vol- to go down to the option -> wipe cache/"
-    echo "   factory reset"
-    echo "   b. Select the option with Power button"
-    echo "   c. Use Vol- to go down to the option -> Yes "
-    echo "   d. Select the option with Power button to start"
-    echo "   deleting the content of cache partition."
-    echo "   e. Use Vol- to go down to the option -> apply update"
-    echo "   from external storage"
-    echo "   f. Use Vol- to go down to the folder-> fxosbuilds"
-    echo "   g. Select the option with Power button to enter in"
-    echo "   folder."
-    echo "   h. Use Vol- to go down and select the package -> "
-    echo "   update-base-inari.zip"
-    echo "   i. Use Vol- to go down to the option -> Yes"
-    echo "   j. Select the option with Power button to start the"
-    echo "   downgrade."
-    echo "   k. Select the option -> reboot the system now"
-    echo "   "
-    echo "   ..................................................."
-    echo "   "
-    read -s -n 1 -p "   Press [Enter] key to reboot on recovery mode..."
+    echo ""
+    echo "We are going to push some files to the sdcard"
+    ./adb shell mkdir /sdcard/fxosbuilds
+    ./adb shell "rm /sdcard/fxosbuilds/inari-update.zip"
+    ./adb shell "rm /sdcard/fxosbuilds/inari-update-signed.zip"
+    ./adb push root/inari-update.zip /sdcard/fxosbuilds/inari-update.zip
+    ./adb push root/inari-update-signed.zip /sdcard/fxosbuilds/inari-update-signed.zip
+    echo ""
+    echo "Rebooting on recovery mode"
     ./adb reboot recovery
+    echo ""
+    echo "Now you need to install first the inari-update.zip package"
+    echo ""
+    pause "Press [Enter] when you finished it to continue..."
+    echo ""
+    ./adb wait-for-device
+    echo ""
+    echo "Now your device will be on a bootloop. Don't worry is the"
+    echo "normal process. Now we will try to boot into recovery again."
+    ./adb reboot recovery
+    echo ""
+    echo "Now you need to install first the inari-update-signed.zip package"
+    echo ""
+    pause "Press [Enter] when you finished it to continue..."
+    echo ""
+    echo "Now finish the new setup of FirefoxOS."
+    echo ""
+    pause "Press [Enter] when you finished it to continue..."
+    echo "Rebooting device"
+    ./adb reboot
+    echo ""
     ./adb wait-for-device
     downgrade_inari_root_success
 }
 
+function adb_root_select() {
+    echo "${green}   "
+    echo "       ............................................................."
+    echo "${cyan}   "
+    echo "             Which is your device?"
+    echo "   "
+    echo "   "
+    echo "             Connect your phone to USB, then:"
+    echo "   "
+    echo "             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'"
+    echo "${green}  "
+    echo "       ............................................................."
+    echo "${normal}   "
+    PS3='#: '
+    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "ZTE Open")
+                adb_inari_root
+                ;;
+            "Alcatel One Touch Fire")
+                adb_hamachi_root
+                ;;
+            "LG Fireweb")
+                echo "We don't have an adb root method for this device"
+                ;;
+            "Huawei Y300")
+                echo "We don't have an adb root method for this device"
+                ;;
+            "Back menu")
+                main
+                ;;
+            *) echo "** Invalid option **";;
+        esac
+    done 
+}
+
 function recovery_inari() {
+    echo "Preparing"
     ./adb shell mkdir /sdcard/fxosbuilds
     ./adb shell "rm /sdcard/fxosbuilds/cwm.img"
     ./adb shell "rm /sdcard/fxosbuilds/stock-recovery.img"
-    echo "Creating a backup"
+    echo "Creating a backup of your recovery"
     ./adb shell echo 'busybox dd if=/dev/mtd/mtd0 of=/sdcard/fxosbuilds/stock-recovery.img bs=4k' \| su
     ./adb pull /sdcard/fxosbuilds/stock-recovery.img stock-recovery.img
-    echo "Pushing recovery"
+    echo "Pushing recovery the new recovery"
     ./adb push root/recovery-clockwork-6.0.3.3-roamer2.img /sdcard/fxosbuilds/cwm.img
     ./adb shell echo 'flash_image recovery /sdcard/fxosbuilds/cwm.img' \| su
     echo "Success!"
@@ -136,12 +217,13 @@ function root_inari_ready() {
             echo ""
             echo "Exploit failed, rebooting and trying again!"
             echo "  "
-            echo "If you get a something like this: "
+            echo "If you get an error like this: "
             echo "  "
             echo "           error: device not found"
             echo "  "
             echo "Do not unplug your device. Just use the power"
-            echo "button to reboot your device."
+            echo "button to reboot your device. The process will"
+            echo "continue after reboot."
             echo ""
             echo "..............................................."
             echo ""
@@ -151,14 +233,62 @@ function root_inari_ready() {
             echo "Enjoy!"
             ./adb reboot
             ./adb wait-for-device
+            echo "Now we are going to flash your recovery.."
+            sleep 2
             recovery_inari
-            adb_root
+            echo ""
+            echo"Getting adb root access"
+            adb_inari_root
+            echo ""
+            echo "Rebooting "
+            sleep 1
             ./adb reboot
-            echo "Rebooting..."
+            echo "Returning to main menu"
             sleep 3
             main
         fi
     done
+}
+
+function root_hamachi_ready() {
+    echo ""
+    echo "Rebooting the device"
+    ./adb reboot bootloader
+    echo "Flashing the new recovery"
+    ./${files_dir}fastboot flash recovery root/hamachi_clockworkmod_recovery.img
+    echo ""
+    echo "Now power off your device, and retire the battery for 5 seconds, be sure"
+    echo "of your device is pluged to your computer."
+    echo ""
+    pause 'Press [Enter] key to continue...'
+    echo ""
+    echo "Waiting for device"
+    ./adb wait-for-device
+    echo "Push the SU binary packagefor root access"
+    ./adb shell "rm /sdcard/fxosbuilds/update-alcatel-su.zip"
+    ./adb shell mkdir /sdcard/fxosbuilds
+    ./adb push root/root_alcatel-signed.zip /sdcard/fxosbuilds/update-alcatel-su.zip
+    echo "Rebooting on recovery mode"
+    ./adb reboot recovery
+    echo "Now you need to install first the update-alcatel-su.zip package"
+    echo ""
+    pause "Press [Enter] when you finished it to continue..."
+    echo ""
+    echo "Waiting for device"
+    ./adb wait-for-device
+    # We need to find a way to check if device is rooted
+    echo "Rooted"
+    sleep 1
+    echo ""
+    echo "Now we are going to get adb root access"
+    echo ""
+    adb_hamachi_root
+    echo "Rebooting device"
+    ./adb reboot
+    ./adb wait-for-device
+    echo "Returning to main menu"
+    sleep 2
+    main
 }
 
 function root_inari() {
@@ -182,11 +312,22 @@ function root_inari() {
 }
 
 function root_hamachi() {
-    echo "** Sorry, we are working on a root for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
+    echo "   "
+    echo "               ** IMPORTANT **"
+    echo "   "
+    echo "   Connect your phone to USB, then:"
+    echo "   "
+    echo "   Settings -> Device information -> More Information"
+    echo "   -> Developer and enable 'Remote debugging'"
+    echo "   "
+    echo "Are you sure you want to continue?"
+    echo "   "
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) root_hamachi_ready; break;;
+            No ) echo "You are not sure, come back when you will :)"; main; break;;
+        esac
+    done
 }
 
 function root_leo() {
@@ -204,33 +345,10 @@ function root_helix() {
     sleep 1
     main
 }
-
-function update_inari_ready() {
-    ./adb shell "rm /sdcard/fxosbuilds/update.zip"
-    echo "Pushing update to sdCard"
-    ./adb push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
-    echo "Remounting partitions"
-    ./adb remount
-    echo "Configuring recovery to apply the update"
-    ./adb shell "echo 'boot-recovery ' > /cache/recovery/command"
-    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
-    ./adb shell "echo '--wipe_cache' >> /cache/recovery/command"
-    echo "Do you want to erase data partition?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) ./adb shell "echo '--wipe_data' >> /cache/recovery/command"; break;;
-            No ) break;;
-        esac
-    done
-    ./adb shell "echo 'reboot' >> /cache/recovery/command"
-    ./adb shell "reboot recovery"
-    echo "Updated!"
-}
-
 function delete_extra_gecko_files_on_device() {
-    files_to_remove="$(cat <(ls $B2G_OBJDIR) <(run_adb shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
+    files_to_remove="$(cat <(ls $B2G_OBJDIR) <(./adb shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
     if [ "$files_to_remove" != "" ]; then
-        ./${files_dir}adb shell "cd /system/b2g && rm $files_to_remove" > /dev/null
+        ./adb shell "cd /system/b2g && rm $files_to_remove" > /dev/null
     fi
     return 0
 }
@@ -260,66 +378,65 @@ function go_update() {
     # Working on gecko
     echo "Flashing Gecko"
     echo " "
-    ./${files_dir}adb wait-for-device
-    ./${files_dir}adb shell stop b2g &&
-    ./${files_dir}adb remount &&
+    ./adb wait-for-device
+    ./adb shell stop b2g &&
+    ./adb remount &&
     delete_extra_gecko_files_on_device &&
-    ./${files_dir}adb push $B2G_OBJDIR /system/b2g &&
+    ./adb push $B2G_OBJDIR /system/b2g &&
     echo " "
     echo "Restarting B2G ...." &&
     echo " "
-    ./${files_dir}adb shell start b2g
+    ./adb shell start b2g
 
     # Working on gaia
     echo "Flashing Gaia"
     echo " "
-    ./${files_dir}adb shell stop b2g
-    for FILE in `run_adb shell ls /data/local | tr -d '\r'`;
+    ./adb shell stop b2g
+    for FILE in `./adb shell ls /data/local | tr -d '\r'`;
     do
         if [ $FILE != 'tmp' ]; then
-            ./${files_dir}adb shell rm -r /data/local/$FILE
+            ./adb shell rm -r /data/local/$FILE
         fi
     done
-    ./${files_dir}adb shell rm -r /cache/*
-    ./${files_dir}adb shell rm -r /data/b2g/*
-    ./${files_dir}adb shell rm -r /data/local/webapps
-    ./${files_dir}adb remount
-    ./${files_dir}adb shell rm -r /system/b2g/webapps
+    ./adb shell rm -r /cache/*
+    ./adb shell rm -r /data/b2g/*
+    ./adb shell rm -r /data/local/webapps
+    ./adb remount
+    ./adb shell rm -r /system/b2g/webapps
 
     echo " "
     echo "Installing Gaia"
-    ./${files_dir}adb start-server
-    ./${files_dir}adb shell stop b2g 
-    ./${files_dir}adb shell rm -r /cache/*
+    ./adb start-server
+    ./adb shell stop b2g 
+    ./adb shell rm -r /cache/*
     echo ""
     echo "Remounting partition to start the gaia install"
-    ./${files_dir}adb remount
+    ./adb remount
     cd update/gaia
-    python ../install-gaia.py "adb" ${GAIA_INSTALL_PARENT}
+    python ../install-gaia.py "../adb" ${GAIA_INSTALL_PARENT}
     cd ..
     echo ""
     echo "Gaia installed"
     echo ""
     echo "Starting system"
-    ./${files_dir}adb shell start b2g
-    echo ""
+    cd ..
+    ./adb shell start b2g
     echo "..."
     # install default data
-    ./${files_dir}adb shell stop b2g
+    ./adb shell stop b2g
     echo "......"
-    run_adb remount
+    ./adb remount
     echo "........."
-    ./${files_dir}adb push gaia/profile/settings.json /system/b2g/defaults/settings.json
+    ./adb push update/gaia/profile/settings.json /system/b2g/defaults/settings.json
     #ifdef CONTACTS_PATH
-    #    ./${files_dir}adb push profile/contacts.json /system/b2g/defaults/contacts.json
+    #    ./adb push profile/contacts.json /system/b2g/defaults/contacts.json
     #else
     echo "............"
-    ./${files_dir}adb shell rm /system/b2g/defaults/contacts.json
+    ./adb shell rm /system/b2g/defaults/contacts.json
     #endif
-    echo "${green}DONE!"
-    ./${files_dir}adb shell start b2g
+    echo "${green}DONE!${normal}"
+    ./adb shell start b2g
     echo " "
-    echo "Let's back"
     verify_update
 }
 
@@ -490,14 +607,14 @@ function main() {
     echo "${green}       ............................................................."
     echo ""
     echo ""
-    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter "
-    echo "  the number of your selection & follow the prompts."
+    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of"
+    echo "  your selection & follow the prompts."
     echo ""
     echo ""
     echo "      1)  Root your device"
     echo "      2)  Update your device"
-    echo "      3)  Clean fxosbuilds sdcard folder"
-    echo "      4)  Download the latest update"
+    echo "      3)  ADB Root"
+    echo "      4)  TBD"
     echo "      5)  TBD"
     echo "      6)  TBD"
     echo "      7)  TBD"
@@ -514,7 +631,7 @@ function main() {
     elif [ "$mainmen" == 2 ] ; then
         update
     elif [ "$mainmen" == 3 ] ; then
-        echo "Not implemented"
+        adb_root_select
     elif [ "$mainmen" == 4 ] ; then
         echo "Not implemented"
     elif [ "$mainmen" == 5 ] ; then
