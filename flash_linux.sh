@@ -38,27 +38,24 @@ function adb_inari_root() {
     mkdir boot-init
     cp ${files_dir}mkbootfs boot-init/mkbootfs
     cp ${files_dir}mkbootimg boot-init/mkbootimg
+    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
     cp ${files_dir}inari-default.prop boot-init/default.prop
-    cp ${files_dir}inari-init.b2g.rc boot-init/init.b2g.rc
     cd boot-init
     echo "Copying your boot.img copy"
     ../adb pull /sdcard/fxosbuilds/boot.img
-    abootimg -x boot.img
+    ./split_bootimg.pl boot.img
     mkdir initrd
     cd initrd 
-    echo "ready?????"
-    mv ../initrd.img initrd.gz
+    echo "ready...."
+    mv ../boot.img-ramdisk.gz initrd.gz
     echo "Boot change process"
     gunzip initrd.gz
     cpio -id < initrd
     rm default.prop
-    rm init.b2g.rc
-    sleep 30
     echo "New default.prop and init.b2g.rc"
     cd ..
     mv mkbootfs initrd/mkbootfs
     mv default.prop initrd/default.prop
-    mv init.b2g.rc initrd/init.b2g.rc
     cd initrd
     ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
     cd ..
@@ -80,14 +77,15 @@ function adb_hamachi_root() {
     mkdir boot-init
     cp ${files_dir}mkbootfs boot-init/mkbootfs
     cp ${files_dir}mkbootimg boot-init/mkbootimg
+    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
     cp ${files_dir}hamachi-default.prop boot-init/default.prop
     cd boot-init
     echo "Copying your boot.img copy"
     ./adb pull /sdcard/fxosbuilds/boot.img
-    abootimg -x boot.img
+    ./split_bootimg.pl boot.img
     mkdir initrd
     cd initrd 
-    mv ../initrd.img initrd.gz
+    mv ../boot.img-ramdisk.gz initrd.gz
     echo "Boot change process"
     gunzip initrd.gz
     cpio -id < initrd
