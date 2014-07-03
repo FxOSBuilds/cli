@@ -67,44 +67,6 @@ function adb_inari_root() {
     sleep 3
 }
 
-function adb_hamachi_root() {
-    echo ""
-    rm -r boot-init
-    ./adb shell "rm /sdcard/fxosbuilds/newboot.img"
-    echo "Creating a copy of boot.img"
-    ./adb shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
-    echo "building the workspace"
-    mkdir boot-init
-    cp ${files_dir}mkbootfs boot-init/mkbootfs
-    cp ${files_dir}mkbootimg boot-init/mkbootimg
-    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
-    cp ${files_dir}hamachi-default.prop boot-init/default.prop
-    cd boot-init
-    echo "Copying your boot.img copy"
-    ./adb pull /sdcard/fxosbuilds/boot.img
-    ./split_bootimg.pl boot.img
-    mkdir initrd
-    cd initrd 
-    mv ../boot.img-ramdisk.gz initrd.gz
-    echo "Boot change process"
-    gunzip initrd.gz
-    cpio -id < initrd
-    rm default.prop
-    echo "New default.prop"
-    cd ..
-    mv mkbootfs initrd/mkbootfs
-    mv default.prop initrd/default.prop
-    cd initrd
-    ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
-    cd ..
-    cd ..
-    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=hamachi' -o newboot.img
-    ./adb push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
-    ./adb shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "Success!"
-    sleep 3
-}
-
 function downgrade_inari() {
     echo ""
     echo "We are going to push some files to the sdcard"
@@ -155,22 +117,16 @@ function adb_root_select() {
     echo "${green}  "
     echo "       ............................................................."
     echo "${normal}   "
-    PS3='#: '
-    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    PS3='Are you ready to start adb root process?: '
+    options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
-            "ZTE Open")
+            "Yes")
                 adb_inari_root
                 ;;
-            "Alcatel One Touch Fire")
-                adb_hamachi_root
-                ;;
-            "LG Fireweb")
-                echo "We don't have an adb root method for this device"
-                ;;
-            "Huawei Y300")
-                echo "We don't have an adb root method for this device"
+            "No")
+                echo "Carefull! you need to have root access to update"
                 ;;
             "Back menu")
                 main
@@ -248,47 +204,6 @@ function root_inari_ready() {
     done
 }
 
-function root_hamachi_ready() {
-    echo ""
-    echo "Rebooting the device"
-    ./adb reboot bootloader
-    echo "Flashing the new recovery"
-    ./${files_dir}fastboot flash recovery root/hamachi_clockworkmod_recovery.img
-    echo ""
-    echo "Now power off your device, and retire the battery for 5 seconds, be sure"
-    echo "of your device is pluged to your computer."
-    echo ""
-    pause 'Press [Enter] key to continue...'
-    echo ""
-    echo "Waiting for device"
-    ./adb wait-for-device
-    echo "Push the SU binary packagefor root access"
-    ./adb shell "rm /sdcard/fxosbuilds/update-alcatel-su.zip"
-    ./adb shell mkdir /sdcard/fxosbuilds
-    ./adb push root/root_alcatel-signed.zip /sdcard/fxosbuilds/update-alcatel-su.zip
-    echo "Rebooting on recovery mode"
-    ./adb reboot recovery
-    echo "Now you need to install first the update-alcatel-su.zip package"
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
-    echo ""
-    echo "Waiting for device"
-    ./adb wait-for-device
-    # We need to find a way to check if device is rooted
-    echo "Rooted"
-    sleep 1
-    echo ""
-    echo "Now we are going to get adb root access"
-    echo ""
-    adb_hamachi_root
-    echo "Rebooting device"
-    ./adb reboot
-    ./adb wait-for-device
-    echo "Returning to main menu"
-    sleep 2
-    main
-}
-
 function root_inari() {
     echo "   "
     echo "               ** IMPORTANT **"
@@ -309,40 +224,6 @@ function root_inari() {
     done
 }
 
-function root_hamachi() {
-    echo "   "
-    echo "               ** IMPORTANT **"
-    echo "   "
-    echo "   Connect your phone to USB, then:"
-    echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
-    echo "   "
-    echo "Are you sure you want to continue?"
-    echo "   "
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) root_hamachi_ready; break;;
-            No ) echo "You are not sure, come back when you will :)"; main; break;;
-        esac
-    done
-}
-
-function root_leo() {
-    echo "** Sorry, we are working on a root for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
-
-function root_helix() {
-    echo "** Sorry, we are working on a root for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
 function delete_extra_gecko_files_on_device() {
     files_to_remove="$(cat <(ls $B2G_OBJDIR) <(./adb shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
     if [ "$files_to_remove" != "" ]; then
@@ -452,7 +333,7 @@ function update_accepted() {
     echo "${green}  "
     echo "       ............................................................."
     echo "${normal}   "
-    PS3='#: '
+    PS3='Are you ready?: '
     options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
@@ -489,22 +370,16 @@ function root_accepted() {
     echo "${green}  "
     echo "       ............................................................."
     echo "${normal}   "
-    PS3='#: '
-    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    PS3='Are you ready?: '
+    options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
-            "ZTE Open")
+            "Yes")
                 root_inari
                 ;;
-            "Alcatel One Touch Fire")
-                root_hamachi
-                ;;
-            "LG Fireweb")
-                root_leo
-                ;;
-            "Huawei Y300")
-                root_helix
+            "No")
+                echo "Back when you are ready"
                 ;;
             "Back menu")
                 main
