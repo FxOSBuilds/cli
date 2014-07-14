@@ -18,6 +18,46 @@ function pause(){
    read -p "$*"
 }
 
+function find_prefs_path(){
+    case `uname` in
+        "Linux")
+            prefs_path=$(./adb shell ls /data/b2g/mozilla/*.default/prefs.js | tr -d '\n' | tr -d '\r');;
+        "Darwin")
+            prefs_path=$(./adb shell ls /data/b2g/mozilla/*.default/prefs.js | tr -d '\n' | tr -d '\r');;
+    esac
+}
+
+function channel_ota {
+	cur_dir=$(pwd)
+	dir=$(mktemp -d -t captive.XXXXXXXXXXXX)
+	cd ${dir}
+	URL=update.firefoxosbuilds.org/update.xml
+	find_prefs_path
+	./adb pull ${prefs_path}
+	cp prefs.js prefs.js.bak
+	echo -e "user_pref(\"app.update.url.override\", \"$URL\");" >> prefs.js
+	./adb push prefs.js ${prefs_path}
+	sleep 5
+	./adb reboot
+	cd ${cur_dir}
+	rm -rf ${dir}
+}
+
+function update_channel{
+	echo ""
+    echo "We are going to change the update channel,"
+    echo "so, in the future you will receive updates"
+    echo "without flash every time."
+    sleep 2
+    echo "Are you ready?: "
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) channel_ota; break;;
+            No ) echo "Aborted"; break;;
+        esac
+    done
+}
+
 function downgrade_inari_root_success() {
     echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
     select yn in "Yes" "No"; do
@@ -317,6 +357,11 @@ function go_update() {
     ./adb shell start b2g
     echo " "
     verify_update
+    echo "We are going to change the update channel,"
+    echo "so, in the future you will receive updates"
+    echo "without flash every time."
+    sleep 2
+    update_channel
 }
 
 function update_accepted() {
@@ -467,6 +512,45 @@ function update() {
     done
 }
 
+function option_two() {
+    echo "${green}   "
+    echo "       ............................................................."
+    echo "${cyan}   "
+    echo "             What you what to do?"
+    echo "   "
+    echo "${green}  "
+    echo "       ............................................................."
+    echo "${normal}   "
+    PS3='#?: '
+    options=("Root" "ADB root" "Update" "Change update channel" "Back menu")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Root")
+                root
+                ;;
+            "ADB root")
+                adb_root_select
+                ;;
+            "Update")
+                update
+                ;;
+            "Change update channel"
+            	update_channel
+            	;;
+            "Back menu")
+                main
+                ;;
+            *) echo "** Invalid option **";;
+        esac
+    done
+}
+
+function option_one {
+	root
+	update
+}
+
 function main() {   
     echo ""
     echo "${green}       ............................................................."
@@ -484,52 +568,22 @@ function main() {
     echo "  your selection & follow the prompts."
     echo ""
     echo ""
-    echo "      1)  Root your device"
-    echo "      2)  Update your device"
-    echo "      3)  ADB Root"
-    echo "      4)  TBD"
-    echo "      5)  TBD"
-    echo "      6)  TBD"
-    echo "      7)  TBD"
-    echo "      8)  TBD"
-    echo "      9)  TBD"
-    echo "      10) TBD"
-    echo "      11) TBD"
-    echo "      12) TBD"
-    echo "      13) Exit"
+    echo "      1)  Update your device"
+    echo "      2)  Advanced"
+    echo "      3)  Exit"
     echo ""
     read mainmen 
     if [ "$mainmen" == 1 ] ; then
-        root 
+        option_one
     elif [ "$mainmen" == 2 ] ; then
-        update
+        option_two
     elif [ "$mainmen" == 3 ] ; then
-        adb_root_select
-    elif [ "$mainmen" == 4 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 5 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 6 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 7 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 8 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 9 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 10 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 11 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 12 ] ; then 
-        echo "Not implemented"
-    elif [ "$mainmen" == 13 ] ; then
         echo ""
         echo "                    ------------------------------------------"
         echo "                        Exiting FirefoxOS Builds installer   "
         sleep 2
         exit 0
-    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 3 ] && [ "$mainmen" != 4 ] && [ "$mainmen" != 5 ] && [ "$mainmen" != 6 ] && [ "$mainmen" != 7 ] && [ "$mainmen" != 8 ] && [ "$mainmen" != 9 ] && [ "$mainmen" != 10 ] && [ "$mainmen" != 11 ] && [ "$mainmen" != 12 ]; then
+    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ]; then
         echo ""
         echo ""
         echo "                        Enter a valid number   "
