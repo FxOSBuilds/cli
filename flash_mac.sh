@@ -13,58 +13,31 @@ normal=$(tput sgr0)
 B2G_OBJDIR="update/gecko/b2g"
 GAIA_INSTALL_PARENT="/system/b2g"
 files_dir="files/"
+B2G_PREF_DIR=/system/b2g/defaults/pref
 
 function pause(){
    read -p "$*"
 }
 
-function downgrade_inari_root_success() {
-    echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) root_inari_ready; break;;
-            No ) echo "Please contact us with the logs"; break;;
-        esac
-    done
+function channel_ota {
+    ./adb.mac remount
+    ./adb.mac push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
+    ./adb.mac reboot
 }
 
-function adb_inari_root() {
+function update_channel{
     echo ""
-    rm -r boot-init
-    ./adb.mac shell "rm /sdcard/fxosbuilds/newboot.img"
-    echo "Creating a copy of boot.img"
-    ./adb.mac shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
-    echo "building the workspace"
-    mkdir boot-init
-    cp ${files_dir}mkbootfs boot-init/mkbootfs
-    cp ${files_dir}mkbootimg boot-init/mkbootimg
-    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
-    cp ${files_dir}inari-default.prop boot-init/default.prop
-    cd boot-init
-    echo "Copying your boot.img copy"
-    ../adb.mac pull /sdcard/fxosbuilds/boot.img
-    ./split_bootimg.pl boot.img
-    mkdir initrd
-    cd initrd 
-    echo "ready...."
-    mv ../boot.img-ramdisk.gz initrd.gz
-    echo "Boot change process"
-    gunzip initrd.gz
-    cpio -id < initrd
-    rm default.prop
-    echo "New default.prop and init.b2g.rc"
-    cd ..
-    mv mkbootfs initrd/mkbootfs
-    mv default.prop initrd/default.prop
-    cd initrd
-    ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
-    cd ..
-    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
-    cd ..
-    ./adb.mac push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
-    ./adb.mac shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "Success!"
-    sleep 3
+    echo "We are going to change the update channel,"
+    echo "so, in the future you will receive updates"
+    echo "without flash every time."
+    sleep 2
+    echo "Are you ready?: "
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) channel_ota; break;;
+            No ) echo "Aborted"; break;;
+        esac
+    done
 }
 
 function adb_hamachi_root() {
@@ -105,146 +78,35 @@ function adb_hamachi_root() {
     sleep 3
 }
 
-function downgrade_inari() {
-    echo ""
-    echo "We are going to push some files to the sdcard"
-    ./adb.mac shell mkdir /sdcard/fxosbuilds
-    ./adb.mac shell "rm /sdcard/fxosbuilds/inari-update.zip"
-    ./adb.mac shell "rm /sdcard/fxosbuilds/inari-update-signed.zip"
-    ./adb.mac push root/inari-update.zip /sdcard/fxosbuilds/inari-update.zip
-    ./adb.mac push root/inari-update-signed.zip /sdcard/fxosbuilds/inari-update-signed.zip
-    echo ""
-    echo "Rebooting on recovery mode"
-    ./adb.mac reboot recovery
-    echo ""
-    echo "Now you need to install first the inari-update.zip package"
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
-    echo ""
-    ./adb.mac wait-for-device
-    echo ""
-    echo "Now your device will be on a bootloop. Don't worry is the"
-    echo "normal process. Now we will try to boot into recovery again."
-    ./adb.mac reboot recovery
-    echo ""
-    echo "Now you need to install first the inari-update-signed.zip package"
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
-    echo ""
-    echo "Now finish the new setup of FirefoxOS."
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
-    echo "Rebooting device"
-    ./adb.mac reboot
-    echo ""
-    ./adb.mac wait-for-device
-    downgrade_inari_root_success
-}
-
 function adb_root_select() {
-    echo "${green}   "
-    echo "       ............................................................."
-    echo "${cyan}   "
-    echo "             Which is your device?"
-    echo "   "
-    echo "   "
-    echo "             Connect your phone to USB, then:"
-    echo "   "
-    echo "             Settings -> Device information -> More Information"
-    echo "             -> Developer and enable 'Remote debugging'"
-    echo "${green}  "
-    echo "       ............................................................."
-    echo "${normal}   "
-    PS3='#: '
-    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    echo "${green} "
+    echo " ............................................................."
+    echo "${cyan} "
+    echo " "
+    echo " Connect your phone to USB, then:"
+    echo " "
+    echo " Settings -> Device information -> More Information"
+    echo " -> Developer and enable 'Remote debugging'"
+    echo "${green} "
+    echo " ............................................................."
+    echo "${normal} "
+    PS3='Are you ready to start adb root process?: '
+    options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
-            "ZTE Open")
-                adb_inari_root
-                ;;
-            "Alcatel One Touch Fire")
+            "Yes")
                 adb_hamachi_root
                 ;;
-            "LG Fireweb")
-                echo "We don't have an adb root method for this device"
-                ;;
-            "Huawei Y300")
-                echo "We don't have an adb root method for this device"
+            "No")
+                echo "Carefull! you need to have root access to update"
+                main
                 ;;
             "Back menu")
                 main
                 ;;
             *) echo "** Invalid option **";;
         esac
-    done 
-}
-
-function recovery_inari() {
-    echo "Preparing"
-    ./adb.mac shell mkdir /sdcard/fxosbuilds
-    ./adb.mac shell "rm /sdcard/fxosbuilds/cwm.img"
-    ./adb.mac shell "rm /sdcard/fxosbuilds/stock-recovery.img"
-    echo "Creating a backup of your recovery"
-    ./adb.mac shell echo 'busybox dd if=/dev/mtd/mtd0 of=/sdcard/fxosbuilds/stock-recovery.img bs=4k' \| su
-    ./adb.mac pull /sdcard/fxosbuilds/stock-recovery.img stock-recovery.img
-    echo "Pushing recovery the new recovery"
-    ./adb.mac push root/recovery-clockwork-6.0.3.3-roamer2.img /sdcard/fxosbuilds/cwm.img
-    ./adb.mac shell echo 'flash_image recovery /sdcard/fxosbuilds/cwm.img' \| su
-    echo "Success!"
-}
-
-function root_inari_ready() {
-    tmpf=/tmp/root-zte-open.$$
-    echo "               ** Read first **"
-    echo ""
-    echo "Not unplug your device if the device freezes or"
-    echo "is stucked on boot logo. Just use the power"
-    echo "button to turn off your device and turn on again"
-    echo "to try again the exploit."
-    echo ""
-    sleep 6
-    while true ; do
-        ./adb.mac wait-for-device
-        ./adb.mac push root/root-zte-open /data/local/tmp/
-        ./adb.mac shell /data/local/tmp/root-zte-open |tee $tmpf
-        cat $tmpf |grep "Got root"  >/dev/null 2>&1
-        if [ $? != 0 ]; then
-            echo ""
-            echo ".............................................."
-            echo ""
-            echo "Exploit failed, rebooting and trying again!"
-            echo "  "
-            echo "If you get an error like this: "
-            echo "  "
-            echo "           error: device not found"
-            echo "  "
-            echo "Do not unplug your device. Just use the power"
-            echo "button to reboot your device. The process will"
-            echo "continue after reboot."
-            echo ""
-            echo "..............................................."
-            echo ""
-            ./adb.mac reboot
-            rm $tmpf
-        else
-            echo "Enjoy!"
-            ./adb.mac reboot
-            ./adb.mac wait-for-device
-            echo "Now we are going to flash your recovery.."
-            sleep 2
-            recovery_inari
-            echo ""
-            echo"Getting adb root access"
-            adb_inari_root
-            echo ""
-            echo "Rebooting "
-            sleep 1
-            ./adb.mac reboot
-            echo "Returning to main menu"
-            sleep 3
-            main
-        fi
     done
 }
 
@@ -289,26 +151,6 @@ function root_hamachi_ready() {
     main
 }
 
-function root_inari() {
-    echo "   "
-    echo "               ** IMPORTANT **"
-    echo "   "
-    echo "   Connect your phone to USB, then:"
-    echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
-    echo "   "
-    echo "The exploit used to get root works only on FirefoxOS v1.0"
-    echo "Your ZTE Open is running Firefox OS 1.0?"
-    echo "   "
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) root_inari_ready; break;;
-            No ) downgrade_inari; break;;
-        esac
-    done
-}
-
 function root_hamachi() {
     echo "   "
     echo "               ** IMPORTANT **"
@@ -328,21 +170,6 @@ function root_hamachi() {
     done
 }
 
-function root_leo() {
-    echo "** Sorry, we are working on a root for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
-
-function root_helix() {
-    echo "** Sorry, we are working on a root for this device. **"
-    sleep 5
-    echo "             **Returning to main menu**"
-    sleep 1
-    main
-}
 function delete_extra_gecko_files_on_device() {
     files_to_remove="$(cat <(ls $B2G_OBJDIR) <(./adb.mac shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
     if [ "$files_to_remove" != "" ]; then
@@ -359,14 +186,14 @@ function verify_update() {
     do
         case $opt in
             "Yes")
-                "Nice"
+                echo "Nice"
                 main
-                ;;
+                break;;
             "No")
                 echo "Please, contact us. We will look what we can do for you."
                 sleep 2
                 main
-                ;;
+                break;;
             *) echo "** Invalid option **";;
         esac
     done
@@ -435,24 +262,28 @@ function go_update() {
     echo "${green}DONE!${normal}"
     ./adb.mac shell start b2g
     echo " "
+    ./adb.mac reboot
+    ./adb.mac wait-for-device
+    update_channel
+    sleep 2
     verify_update
 }
 
 function update_accepted() {
-    echo "${green}   "
-    echo "       ............................................................."
-    echo "${cyan}   "
-    echo "             Is your device rooted?"
-    echo "   "
-    echo "   "
-    echo "             Connect your phone to USB, then:"
-    echo "   "
-    echo "             Settings -> Device information -> More Information"
-    echo "             -> Developer and enable 'Remote debugging'"
-    echo "${green}  "
-    echo "       ............................................................."
-    echo "${normal}   "
-    PS3='#: '
+    echo "${green} "
+    echo " ............................................................."
+    echo "${cyan} "
+    echo " Is your device rooted?"
+    echo " "
+    echo " "
+    echo " Connect your phone to USB, then:"
+    echo " "
+    echo " Settings -> Device information -> More Information"
+    echo " -> Developer and enable 'Remote debugging'"
+    echo "${green} "
+    echo " ............................................................."
+    echo "${normal} "
+    PS3='Are you ready?: '
     options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
@@ -476,35 +307,29 @@ function update_accepted() {
 }
 
 function root_accepted() {
-    echo "${green}   "
-    echo "       ............................................................."
-    echo "${cyan}   "
-    echo "             Which is your device?"
-    echo "   "
-    echo "   "
-    echo "             Connect your phone to USB, then:"
-    echo "   "
-    echo "             Settings -> Device information -> More Information"
-    echo "             -> Developer and enable 'Remote debugging'"
-    echo "${green}  "
-    echo "       ............................................................."
-    echo "${normal}   "
-    PS3='#: '
-    options=("ZTE Open" "Alcatel One Touch Fire" "LG Fireweb" "Huawei Y300" "Back menu")
+    echo "${green} "
+    echo " ............................................................."
+    echo "${cyan} "
+    echo " Which is your device?"
+    echo " "
+    echo " "
+    echo " Connect your phone to USB, then:"
+    echo " "
+    echo " Settings -> Device information -> More Information"
+    echo " -> Developer and enable 'Remote debugging'"
+    echo "${green} "
+    echo " ............................................................."
+    echo "${normal} "
+    PS3='Are you ready?: '
+    options=("Yes" "No" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
-            "ZTE Open")
-                root_inari
-                ;;
-            "Alcatel One Touch Fire")
+            "Yes")
                 root_hamachi
                 ;;
-            "LG Fireweb")
-                root_leo
-                ;;
-            "Huawei Y300")
-                root_helix
+            "No")
+                echo "Back when you are ready"
                 ;;
             "Back menu")
                 main
@@ -592,72 +417,81 @@ function update() {
     done
 }
 
-function main() {   
+function option_two() {
+    echo "${green} "
+    echo " ............................................................."
+    echo "${cyan} "
+    echo " What you what to do?"
+    echo " "
+    echo "${green} "
+    echo " ............................................................."
+    echo "${normal} "
+    PS3='#?: '
+    options=("Root" "ADB root" "Update" "Change update channel" "Back menu")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Root")
+                root
+                ;;
+            "ADB root")
+                adb_root_select
+                ;;
+            "Update")
+                update
+                ;;
+            "Change update channel")
+                update_channel
+                ;;
+            "Back menu")
+                main
+                ;;
+            *) echo "** Invalid option **";;
+        esac
+    done
+}
+
+function option_one {
+    root
+    update
+}
+
+function main() {
     echo ""
-    echo "${green}       ............................................................."
+    echo "${green} ............................................................."
     echo " "
     echo " "
     echo " "
-    echo "    ${cyan}                   ${cyan}FirefoxOS Builds installer       "
+    echo " ${cyan} ${cyan}FirefoxOS Builds installer "
     echo " "
     echo " "
     echo " "
-    echo "${green}       ............................................................."
+    echo "${green} ............................................................."
     echo ""
     echo ""
     echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of"
-    echo "  your selection & follow the prompts."
+    echo " your selection & follow the prompts."
     echo ""
     echo ""
-    echo "      1)  Root your device"
-    echo "      2)  Update your device"
-    echo "      3)  ADB Root"
-    echo "      4)  TBD"
-    echo "      5)  TBD"
-    echo "      6)  TBD"
-    echo "      7)  TBD"
-    echo "      8)  TBD"
-    echo "      9)  TBD"
-    echo "      10) TBD"
-    echo "      11) TBD"
-    echo "      12) TBD"
-    echo "      13) Exit"
+    echo " 1) Update your device"
+    echo " 2) Advanced"
+    echo " 3) Exit"
     echo ""
-    read mainmen 
+    read mainmen
     if [ "$mainmen" == 1 ] ; then
-        root 
+        option_one
     elif [ "$mainmen" == 2 ] ; then
-        update
+        option_two
     elif [ "$mainmen" == 3 ] ; then
-        adb_root_select
-    elif [ "$mainmen" == 4 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 5 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 6 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 7 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 8 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 9 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 10 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 11 ] ; then
-        echo "Not implemented"
-    elif [ "$mainmen" == 12 ] ; then 
-        echo "Not implemented"
-    elif [ "$mainmen" == 13 ] ; then
         echo ""
-        echo "                    ------------------------------------------"
-        echo "                        Exiting FirefoxOS Builds installer   "
+        echo " ------------------------------------------"
+        echo " Exiting FirefoxOS Builds installer "
         sleep 2
         exit 0
-    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 3 ] && [ "$mainmen" != 4 ] && [ "$mainmen" != 5 ] && [ "$mainmen" != 6 ] && [ "$mainmen" != 7 ] && [ "$mainmen" != 8 ] && [ "$mainmen" != 9 ] && [ "$mainmen" != 10 ] && [ "$mainmen" != 11 ] && [ "$mainmen" != 12 ]; then
+    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ]; then
         echo ""
         echo ""
-        echo "                        Enter a valid number   "
+        echo " Enter a valid number "
         echo ""
         sleep 2
         main
