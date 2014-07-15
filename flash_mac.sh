@@ -13,34 +13,16 @@ normal=$(tput sgr0)
 B2G_OBJDIR="update/gecko/b2g"
 GAIA_INSTALL_PARENT="/system/b2g"
 files_dir="files/"
+B2G_PREF_DIR=/system/b2g/defaults/pref
 
 function pause(){
    read -p "$*"
 }
 
-function find_prefs_path(){
-    case `uname` in
-        "Linux")
-            prefs_path=$(./adb.mac shell ls /data/b2g/mozilla/*.default/prefs.js | tr -d '\n' | tr -d '\r');;
-        "Darwin")
-            prefs_path=$(./adb.mac shell ls /data/b2g/mozilla/*.default/prefs.js | tr -d '\n' | tr -d '\r');;
-    esac
-}
-
 function channel_ota {
-    cur_dir=$(pwd)
-    dir=$(mktemp -d -t captive.XXXXXXXXXXXX)
-    cd ${dir}
-    URL=update.firefoxosbuilds.org/update.xml
-    find_prefs_path
-    ./adb.mac pull ${prefs_path}
-    cp prefs.js prefs.js.bak
-    echo -e "user_pref(\"app.update.url.override\", \"$URL\");" >> prefs.js
-    ./adb.mac push prefs.js ${prefs_path}
-    sleep 5
+    ./adb.mac remount
+    ./adb.mac push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
     ./adb.mac reboot
-    cd ${cur_dir}
-    rm -rf ${dir}
 }
 
 function update_channel{
