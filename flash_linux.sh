@@ -491,6 +491,24 @@ function update() {
     done
 }
 
+function rules {
+    echo ""
+    echo "We need the password you use with sudo,"
+    echo "to copy the rules in your system."
+    echo ""
+    echo "So, be sure to provide the pass."
+    sleep 3
+    echo ""
+    echo "Removing old rules in the system"
+    sudo rm /etc/udev/rules.d/51-android.rules
+    echo ""
+    echo "Copying template file to the udev folder..."
+    sudo cp ${files_dir}51-android.rules /etc/udev/rules.d/
+    echo ""
+    echo "Applying permissions"
+    sudo chmod a+r /etc/udev/rules.d/51-android.rules
+}
+
 function option_two() {
     echo "${green}   "
     echo "       ............................................................."
@@ -501,7 +519,7 @@ function option_two() {
     echo "       ............................................................."
     echo "${normal}   "
     PS3='#?: '
-    options=("Root" "ADB root" "Update" "Change update channel" "Back menu")
+    options=("Root" "ADB root" "Update" "Change update channel" "Android rules" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
@@ -517,6 +535,9 @@ function option_two() {
             "Change update channel")
             	update_channel
             	;;
+            "Android rules")
+                rules
+                ;;
             "Back menu")
                 main
                 ;;
@@ -526,6 +547,7 @@ function option_two() {
 }
 
 function option_one {
+    rules
 	root
 	update
 }
