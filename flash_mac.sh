@@ -129,8 +129,6 @@ function adb_root_select() {
     echo "${green}   "
     echo "       ............................................................."
     echo "${cyan}   "
-    echo "             Which is your device?"
-    echo "   "
     echo "   "
     echo "             Connect your phone to USB, then:"
     echo "   "
@@ -262,7 +260,7 @@ function verify_update() {
     do
         case $opt in
             "Yes")
-                "Nice"
+                echo "Nice"
                 main
                 ;;
             "No")
@@ -338,12 +336,11 @@ function go_update() {
     echo "${green}DONE!${normal}"
     ./adb.mac shell start b2g
     echo " "
-    verify_update
-    echo "We are going to change the update channel,"
-    echo "so, in the future you will receive updates"
-    echo "without flash every time."
-    sleep 2
+    ./adb.mac reboot
+    ./adb.mac wait-for-device
     update_channel
+    sleep 2
+    verify_update
 }
 
 function update_accepted() {
@@ -517,7 +514,7 @@ function option_two() {
             "Update")
                 update
                 ;;
-            "Change update channel"
+            "Change update channel")
                 update_channel
                 ;;
             "Back menu")
