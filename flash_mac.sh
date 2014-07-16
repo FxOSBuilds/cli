@@ -25,7 +25,7 @@ function channel_ota {
     ./adb.mac reboot
 }
 
-function update_channel{
+function update_channel {
     echo ""
     echo "We are going to change the update channel,"
     echo "so, in the future you will receive updates"
