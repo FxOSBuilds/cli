@@ -10,8 +10,6 @@ underline=$(tput smul)
 normal=$(tput sgr0)
 
 # Update
-B2G_OBJDIR="update/gecko/b2g"
-GAIA_INSTALL_PARENT="/system/b2g"
 files_dir="files/"
 B2G_PREF_DIR=/system/b2g/defaults/pref
 
@@ -170,14 +168,6 @@ function root_hamachi() {
     done
 }
 
-function delete_extra_gecko_files_on_device() {
-    files_to_remove="$(cat <(ls $B2G_OBJDIR) <(./adb shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
-    if [ "$files_to_remove" != "" ]; then
-        ./adb shell "cd /system/b2g && rm $files_to_remove" > /dev/null
-    fi
-    return 0
-}
-
 function verify_update() {
     echo "Was your device updated?"
     PS3='?: '
@@ -200,71 +190,26 @@ function verify_update() {
 }
 
 function go_update() {
-    # Working on gecko
-    echo "Flashing Gecko"
-    echo " "
-    ./adb wait-for-device
-    ./adb shell stop b2g &&
-    ./adb remount &&
-    delete_extra_gecko_files_on_device &&
-    ./adb push $B2G_OBJDIR /system/b2g &&
-    echo " "
-    echo "Restarting B2G ...." &&
-    echo " "
-    ./adb shell start b2g
-
-    # Working on gaia
-    echo "Flashing Gaia"
-    echo " "
-    ./adb shell stop b2g
-    for FILE in `./adb shell ls /data/local | tr -d '\r'`;
-    do
-        if [ $FILE != 'tmp' ]; then
-            ./adb shell rm -r /data/local/$FILE
-        fi
+    ./adb shell "rm /sdcard/fxosbuilds/update.zip"
+    echo "Pushing update to sdCard"
+    ./adb push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
+    echo "Remounting partitions"
+    ./adb remount
+    echo "Configuring recovery to apply the update"
+    ./adb shell "echo 'boot-recovery ' > /cache/recovery/command"
+    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
+    ./adb shell "echo '--wipe_cache' >> /cache/recovery/command"
+    echo "Do you want to erase data partition?"
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) ./adb shell "echo '--wipe_data' >> /cache/recovery/command"; break;;
+            No ) break;;
+        esac
     done
-    ./adb shell rm -r /cache/*
-    ./adb shell rm -r /data/b2g/*
-    ./adb shell rm -r /data/local/webapps
-    ./adb remount
-    ./adb shell rm -r /system/b2g/webapps
-
-    echo " "
-    echo "Installing Gaia"
-    ./adb start-server
-    ./adb shell stop b2g 
-    ./adb shell rm -r /cache/*
-    echo ""
-    echo "Remounting partition to start the gaia install"
-    ./adb remount
-    cd update/gaia
-    python ../install-gaia.py "../adb" ${GAIA_INSTALL_PARENT}
-    cd ..
-    echo ""
-    echo "Gaia installed"
-    echo ""
-    echo "Starting system"
-    cd ..
-    ./adb shell start b2g
-    echo "..."
-    # install default data
-    ./adb shell stop b2g
-    echo "......"
-    ./adb remount
-    echo "........."
-    ./adb push update/gaia/profile/settings.json /system/b2g/defaults/settings.json
-    #ifdef CONTACTS_PATH
-    #    ./adb push profile/contacts.json /system/b2g/defaults/contacts.json
-    #else
-    echo "............"
-    ./adb shell rm /system/b2g/defaults/contacts.json
-    #endif
-    echo "${green}DONE!${normal}"
-    ./adb shell start b2g
-    echo " "
-    ./adb reboot
+    ./adb shell "echo 'reboot' >> /cache/recovery/command"
+    ./adb shell "reboot recovery"
     ./adb wait-for-device
-    update_channel
+    echo "Updated!"
     sleep 2
     verify_update
 }
