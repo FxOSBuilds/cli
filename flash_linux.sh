@@ -271,16 +271,11 @@ function go_update() {
     ./adb remount
     echo "Configuring recovery to apply the update"
     ./adb shell "echo 'boot-recovery ' > /cache/recovery/command"
-    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
+    ./adb shell "echo '--wipe_data' >> /cache/recovery/command"
     ./adb shell "echo '--wipe_cache' >> /cache/recovery/command"
-    echo "Do you want to erase data partition?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) ./adb shell "echo '--wipe_data' >> /cache/recovery/command"; break;;
-            No ) break;;
-        esac
-    done
+    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
     ./adb shell "echo 'reboot' >> /cache/recovery/command"
+    echo "Reeboting into recovery"
     ./adb shell "reboot recovery"
     ./adb wait-for-device
     echo "Updated!"
