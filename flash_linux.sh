@@ -26,6 +26,7 @@ function channel_ota {
     ./adb push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
     echo "Rebooting-..."
     ./adb reboot
+    ./adb wait-for-device
 }
 
 function update_channel {
@@ -37,7 +38,7 @@ function update_channel {
     echo "Are you ready?: "
     select yn in "Yes" "No"; do
         case $yn in
-            Yes ) channel_ota; break;;
+            Yes ) channel_ota; main;;
             No ) echo "Aborted"; main;;
         esac
     done
@@ -78,7 +79,7 @@ function adb_inari_root() {
     gunzip initrd.gz
     cpio -id < initrd
     rm default.prop
-    echo "New ${cyan}default.prop${normal} and ${cyan}init.b2g.rc${normal}"
+    echo "New ${cyan}default.prop${normal}"
     cd ..
     mv mkbootfs initrd/mkbootfs
     mv default.prop initrd/default.prop
@@ -89,7 +90,7 @@ function adb_inari_root() {
     cd ..
     ./adb push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
     ./adb shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "${green}Success!${green}"
+    echo "${green}Success!${normal}"
     sleep 3
 }
 
