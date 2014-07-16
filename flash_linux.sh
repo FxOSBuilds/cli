@@ -23,7 +23,7 @@ function channel_ota {
     ./adb reboot
 }
 
-function update_channel{
+function update_channel {
 	echo ""
     echo "We are going to change the update channel,"
     echo "so, in the future you will receive updates"
@@ -245,7 +245,7 @@ function root_inari() {
 function verify_update() {
     echo "Was your device updated?"
     PS3='?: '
-    options=("Yes" "No" "Back menu")
+    options=("Yes" "No")
     select opt in "${options[@]}"
     do
         case $opt in
