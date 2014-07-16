@@ -18,9 +18,15 @@ function pause(){
 }
 
 function channel_ota {
+    echo "Remounting..."
     ./adb remount
+    echo "Removing old channel"
+    ./adb shell "rm /system/b2g/defaults/pref/updates.js"
+    echo "Pushing new OTA channel"
     ./adb push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
+    echo "Rebooting-..."
     ./adb reboot
+    ./adb wait-for-device
 }
 
 function update_channel {
@@ -32,8 +38,8 @@ function update_channel {
     echo "Are you ready?: "
     select yn in "Yes" "No"; do
         case $yn in
-            Yes ) channel_ota; break;;
-            No ) echo "Aborted"; break;;
+            Yes ) channel_ota; main;;
+            No ) echo "Aborted"; main;;
         esac
     done
 }
@@ -51,7 +57,7 @@ function adb_hamachi_root() {
     cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
     cp ${files_dir}hamachi-default.prop boot-init/default.prop
     cd boot-init
-    echo "Copying your boot.img copy"
+    echo "Copying your ${cyan}boot.img${normal} copy"
     ./adb pull /sdcard/fxosbuilds/boot.img
     ./split_bootimg.pl boot.img
     mkdir initrd
@@ -61,7 +67,7 @@ function adb_hamachi_root() {
     gunzip initrd.gz
     cpio -id < initrd
     rm default.prop
-    echo "New default.prop"
+    echo "New ${cyan}default.prop${normal}"
     cd ..
     mv mkbootfs initrd/mkbootfs
     mv default.prop initrd/default.prop
@@ -72,21 +78,21 @@ function adb_hamachi_root() {
     ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=hamachi' -o newboot.img
     ./adb push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
     ./adb shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "Success!"
+    echo "${green}Success!${normal}"
     sleep 3
 }
 
 function adb_root_select() {
     echo "${green} "
-    echo " ............................................................."
+    echo "        ............................................................."
     echo "${cyan} "
     echo " "
-    echo " Connect your phone to USB, then:"
+    echo "             Connect your phone to USB, then:"
     echo " "
-    echo " Settings -> Device information -> More Information"
-    echo " -> Developer and enable 'Remote debugging'"
+    echo "             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'"
     echo "${green} "
-    echo " ............................................................."
+    echo "        ............................................................."
     echo "${normal} "
     PS3='Are you ready to start adb root process?: '
     options=("Yes" "No" "Back menu")
@@ -118,11 +124,11 @@ function root_hamachi_ready() {
     echo "Now power off your device, and retire the battery for 5 seconds, be sure"
     echo "of your device is pluged to your computer."
     echo ""
-    pause 'Press [Enter] key to continue...'
+    pause 'Press ${red}[Enter]${normal} key to continue...'
     echo ""
     echo "Waiting for device"
     ./adb wait-for-device
-    echo "Push the SU binary packagefor root access"
+    echo "Push the ${green}SU${normal} binary package for root access"
     ./adb shell "rm /sdcard/fxosbuilds/update-alcatel-su.zip"
     ./adb shell mkdir /sdcard/fxosbuilds
     ./adb push root/root_alcatel-signed.zip /sdcard/fxosbuilds/update-alcatel-su.zip
@@ -130,7 +136,7 @@ function root_hamachi_ready() {
     ./adb reboot recovery
     echo "Now you need to install first the update-alcatel-su.zip package"
     echo ""
-    pause "Press [Enter] when you finished it to continue..."
+    pause "Press ${red}[Enter]${normal} when you finished it to continue..."
     echo ""
     echo "Waiting for device"
     ./adb wait-for-device
@@ -151,12 +157,12 @@ function root_hamachi_ready() {
 
 function root_hamachi() {
     echo "   "
-    echo "               ** IMPORTANT **"
+    echo "                         ${red}** IMPORTANT **${normal}"
     echo "   "
-    echo "   Connect your phone to USB, then:"
+    echo "              Connect your phone to USB, then:"
     echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
+    echo "              Settings -> Device information -> More Information"
+    echo "              -> Developer and enable 'Remote debugging'"
     echo "   "
     echo "Are you sure you want to continue?"
     echo "   "
@@ -169,9 +175,10 @@ function root_hamachi() {
 }
 
 function verify_update() {
+    echo ""
     echo "Was your device updated?"
     PS3='?: '
-    options=("Yes" "No" "Back menu")
+    options=("Yes" "No")
     select opt in "${options[@]}"
     do
         case $opt in
@@ -197,15 +204,9 @@ function go_update() {
     ./adb remount
     echo "Configuring recovery to apply the update"
     ./adb shell "echo 'boot-recovery ' > /cache/recovery/command"
-    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
     ./adb shell "echo '--wipe_cache' >> /cache/recovery/command"
-    echo "Do you want to erase data partition?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes ) ./adb shell "echo '--wipe_data' >> /cache/recovery/command"; break;;
-            No ) break;;
-        esac
-    done
+    ./adb shell "echo '--wipe_data' >> /cache/recovery/command"
+    ./adb shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
     ./adb shell "echo 'reboot' >> /cache/recovery/command"
     ./adb shell "reboot recovery"
     ./adb wait-for-device
@@ -216,17 +217,17 @@ function go_update() {
 
 function update_accepted() {
     echo "${green} "
-    echo " ............................................................."
+    echo "       ............................................................."
     echo "${cyan} "
-    echo " Is your device rooted?"
+    echo "              Is your device rooted?"
     echo " "
     echo " "
-    echo " Connect your phone to USB, then:"
+    echo "              Connect your phone to USB, then:"
     echo " "
-    echo " Settings -> Device information -> More Information"
-    echo " -> Developer and enable 'Remote debugging'"
+    echo "              Settings -> Device information -> More Information"
+    echo "              -> Developer and enable 'Remote debugging'"
     echo "${green} "
-    echo " ............................................................."
+    echo "       ............................................................."
     echo "${normal} "
     PS3='Are you ready?: '
     options=("Yes" "No" "Back menu")
@@ -253,17 +254,17 @@ function update_accepted() {
 
 function root_accepted() {
     echo "${green} "
-    echo " ............................................................."
+    echo "         ............................................................."
     echo "${cyan} "
-    echo " Which is your device?"
+    echo "                Which is your device?"
     echo " "
     echo " "
-    echo " Connect your phone to USB, then:"
+    echo "                Connect your phone to USB, then:"
     echo " "
-    echo " Settings -> Device information -> More Information"
-    echo " -> Developer and enable 'Remote debugging'"
+    echo "                Settings -> Device information -> More Information"
+    echo "                -> Developer and enable 'Remote debugging'"
     echo "${green} "
-    echo " ............................................................."
+    echo "         ............................................................."
     echo "${normal} "
     PS3='Are you ready?: '
     options=("Yes" "No" "Back menu")
@@ -382,12 +383,11 @@ function rules {
 
 function option_two() {
     echo "${green} "
-    echo " ............................................................."
+    echo "       ............................................................."
     echo "${cyan} "
-    echo " What you what to do?"
-    echo " "
+    echo "                          What you what to do?"
     echo "${green} "
-    echo " ............................................................."
+    echo "       ............................................................."
     echo "${normal} "
     PS3='#?: '
     options=("Root" "ADB root" "Update" "Change update channel" "Android rules" "Back menu")
@@ -423,20 +423,25 @@ function option_one {
     update
 }
 
+function about {
+    echo "Credits and about info here"
+    pause "Press ${red}[Enter]${normal} to return main menu..."
+}
+
 function main() {
     echo ""
     echo "${green} ............................................................."
     echo " "
     echo " "
     echo " "
-    echo " ${cyan} ${cyan}FirefoxOS Builds installer "
+    echo " ${cyan} ${cyan}              FirefoxOS Builds installer "
     echo " "
     echo " "
     echo " "
     echo "${green} ............................................................."
     echo ""
     echo ""
-    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of"
+    echo " ${normal}Welcome to the FirefoxOS Builds installer. Please enter the number of"
     echo " your selection & follow the prompts."
     echo ""
     echo ""
@@ -449,13 +454,15 @@ function main() {
         option_one
     elif [ "$mainmen" == 2 ] ; then
         option_two
+    elif [ "$mainmen" == 0 ] ; then
+        about
     elif [ "$mainmen" == 3 ] ; then
         echo ""
-        echo " ------------------------------------------"
-        echo " Exiting FirefoxOS Builds installer "
+        echo "              ------------------------------------------"
+        echo "                 Exiting FirefoxOS Builds installer "
         sleep 2
         exit 0
-    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ]; then
+    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 0 ]; then
         echo ""
         echo ""
         echo " Enter a valid number "
