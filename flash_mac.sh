@@ -18,8 +18,13 @@ function pause(){
 }
 
 function channel_ota {
+    echo "Remounting..."
     ./adb.mac remount
+    echo "Removing old channel"
+    ./adb.mac shell "rm /system/b2g/defaults/pref/updates.js"
+    echo "Pushing new OTA channel"
     ./adb.mac push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
+    echo "Rebooting-..."
     ./adb.mac reboot
 }
 
@@ -33,17 +38,18 @@ function update_channel {
     select yn in "Yes" "No"; do
         case $yn in
             Yes ) channel_ota; break;;
-            No ) echo "Aborted"; break;;
+            No ) echo "Aborted"; main;;
         esac
     done
 }
 
 function downgrade_inari_root_success() {
+    echo ""
     echo "Was your ZTE Open downgraded successful to FirefoxOS 1.0?"
     select yn in "Yes" "No"; do
         case $yn in
             Yes ) root_inari_ready; break;;
-            No ) echo "Please contact us with the logs"; break;;
+            No ) echo "Please contact us with the logs"; main;;
         esac
     done
 }
@@ -52,7 +58,7 @@ function adb_inari_root() {
     echo ""
     rm -r boot-init
     ./adb.mac shell "rm /sdcard/fxosbuilds/newboot.img"
-    echo "Creating a copy of boot.img"
+    echo "Creating a copy of ${cyan}boot.img${normal}"
     ./adb.mac shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
     echo "building the workspace"
     mkdir boot-init
@@ -61,7 +67,7 @@ function adb_inari_root() {
     cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
     cp ${files_dir}inari-default.prop boot-init/default.prop
     cd boot-init
-    echo "Copying your boot.img copy"
+    echo "Copying your ${cyan}boot.img${normal} copy"
     ../adb.mac pull /sdcard/fxosbuilds/boot.img
     ./split_bootimg.pl boot.img
     mkdir initrd
@@ -72,7 +78,7 @@ function adb_inari_root() {
     gunzip initrd.gz
     cpio -id < initrd
     rm default.prop
-    echo "New default.prop and init.b2g.rc"
+    echo "New ${cyan}default.prop${normal} and ${cyan}init.b2g.rc${normal}"
     cd ..
     mv mkbootfs initrd/mkbootfs
     mv default.prop initrd/default.prop
@@ -83,7 +89,7 @@ function adb_inari_root() {
     cd ..
     ./adb.mac push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
     ./adb.mac shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "Success!"
+    echo "${green}Success!${green}"
     sleep 3
 }
 
@@ -98,24 +104,25 @@ function downgrade_inari() {
     echo ""
     echo "Rebooting on recovery mode"
     ./adb.mac reboot recovery
-    echo ""
-    echo "Now you need to install first the inari-update.zip package"
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
-    echo ""
+    sleep 3
+    echo "${green}"
+    echo "Now you need to install first the ${cyan}inari-update.zip${green} package"
+    echo "${normal}"
+    pause "Press ${red}[Enter]${normal} when you finished it to continue..."
     ./adb.mac wait-for-device
     echo ""
     echo "Now your device will be on a bootloop. Don't worry is the"
     echo "normal process. Now we will try to boot into recovery again."
     ./adb.mac reboot recovery
-    echo ""
-    echo "Now you need to install first the inari-update-signed.zip package"
-    echo ""
-    pause "Press [Enter] when you finished it to continue..."
+    echo "${green}"
+    echo "Now you need to install first the ${cyan}inari-update-signed.zip${green} package"
+    echo "${normal}"
+    pause "Press ${red}[Enter]${normal} when you finished it to continue..."
+    ./adb.mac wait-for-device
     echo ""
     echo "Now finish the new setup of FirefoxOS."
     echo ""
-    pause "Press [Enter] when you finished it to continue..."
+    pause "Press ${red}[Enter]${normal} when you finished it to continue..."
     echo "Rebooting device"
     ./adb.mac reboot
     echo ""
@@ -165,12 +172,12 @@ function recovery_inari() {
     echo "Pushing recovery the new recovery"
     ./adb.mac push root/recovery-clockwork-6.0.3.3-roamer2.img /sdcard/fxosbuilds/cwm.img
     ./adb.mac shell echo 'flash_image recovery /sdcard/fxosbuilds/cwm.img' \| su
-    echo "Success!"
+    echo "${green}Success!${normal}"
 }
 
 function root_inari_ready() {
     tmpf=/tmp/root-zte-open.$$
-    echo "               ** Read first **"
+    echo "               ${green}** Read first **${normal}"
     echo ""
     echo "Not unplug your device if the device freezes or"
     echo "is stucked on boot logo. Just use the power"
@@ -185,19 +192,19 @@ function root_inari_ready() {
         cat $tmpf |grep "Got root"  >/dev/null 2>&1
         if [ $? != 0 ]; then
             echo ""
-            echo ".............................................."
+            echo "   ......................................................."
             echo ""
-            echo "Exploit failed, rebooting and trying again!"
+            echo "       ${red}Exploit failed, rebooting and trying again!${normal}"
             echo "  "
-            echo "If you get an error like this: "
+            echo "       If you get an error like this: "
             echo "  "
-            echo "           error: device not found"
+            echo "                 ${green}error: device not found${normal}"
             echo "  "
-            echo "Do not unplug your device. Just use the power"
-            echo "button to reboot your device. The process will"
-            echo "continue after reboot."
+            echo "       Do not unplug your device. Just use the power"
+            echo "       button to reboot your device. The process will"
+            echo "       continue after reboot."
             echo ""
-            echo "..............................................."
+            echo "   ......................................................."
             echo ""
             ./adb.mac reboot
             rm $tmpf
@@ -224,15 +231,15 @@ function root_inari_ready() {
 
 function root_inari() {
     echo "   "
-    echo "               ** IMPORTANT **"
+    echo "${red}                            ** IMPORTANT **${normal}"
     echo "   "
-    echo "   Connect your phone to USB, then:"
+    echo "             Connect your phone to USB, then:"
     echo "   "
-    echo "   Settings -> Device information -> More Information"
-    echo "   -> Developer and enable 'Remote debugging'"
+    echo "${cyan}             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'${normal}"
     echo "   "
-    echo "The exploit used to get root works only on FirefoxOS v1.0"
-    echo "Your ZTE Open is running Firefox OS 1.0?"
+    echo "             The exploit used to get root works only on FirefoxOS v1.0"
+    echo "             Your ZTE Open is running Firefox OS 1.0?"
     echo "   "
     select yn in "Yes" "No"; do
         case $yn in
@@ -243,7 +250,8 @@ function root_inari() {
 }
 
 function verify_update() {
-    echo "Was your device updated?"
+    echo ""
+    echo "${green}Was your device updated?${normal}"
     PS3='?: '
     options=("Yes" "No")
     select opt in "${options[@]}"
@@ -324,8 +332,6 @@ function root_accepted() {
     echo "${green}   "
     echo "       ............................................................."
     echo "${cyan}   "
-    echo "             Which is your device?"
-    echo "   "
     echo "   "
     echo "             Connect your phone to USB, then:"
     echo "   "
@@ -335,7 +341,7 @@ function root_accepted() {
     echo "       ............................................................."
     echo "${normal}   "
     PS3='Are you ready?: '
-    options=("Yes" "No" "Back menu")
+    options=("Yes" "No")
     select opt in "${options[@]}"
     do
         case $opt in
@@ -344,8 +350,6 @@ function root_accepted() {
                 ;;
             "No")
                 echo "Back when you are ready"
-                ;;
-            "Back menu")
                 main
                 ;;
             *) echo "** Invalid option **";;
@@ -447,19 +451,20 @@ function rules {
     echo ""
     echo "Applying permissions"
     sudo chmod a+r /etc/udev/rules.d/51-android.rules
+    echo "Done!"
+    sleep 1
 }
 
 function option_two() {
     echo "${green}   "
     echo "       ............................................................."
     echo "${cyan}   "
-    echo "             What you what to do?"
-    echo "   "
+    echo "                           What you want to do?"
     echo "${green}  "
     echo "       ............................................................."
     echo "${normal}   "
     PS3='#?: '
-    options=("Root" "ADB root" "Update" "Change update channel" "Back menu")
+    options=("Root" "ADB root" "Update" "Change update channel" "Android rules" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
@@ -477,6 +482,7 @@ function option_two() {
                 ;;
             "Android rules")
                 rules
+                main
                 ;;
             "Back menu")
                 main
@@ -490,6 +496,11 @@ function option_one {
     rules
     root
     update
+}
+
+function about {
+    echo "Credits and about info here"
+    pause "Press ${red}[Enter]${normal} to return main menu..."
 }
 
 function main() {   
@@ -513,18 +524,22 @@ function main() {
     echo "      2)  Advanced"
     echo "      3)  Exit"
     echo ""
+    echo "      0)  About"
+    echo ""
     read mainmen 
     if [ "$mainmen" == 1 ] ; then
         option_one
     elif [ "$mainmen" == 2 ] ; then
         option_two
+    elif [ "$mainmen" == 0 ] ; then
+        about
     elif [ "$mainmen" == 3 ] ; then
         echo ""
         echo "                    ------------------------------------------"
         echo "                        Exiting FirefoxOS Builds installer   "
         sleep 2
         exit 0
-    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ]; then
+    elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 0 ]; then
         echo ""
         echo ""
         echo "                        Enter a valid number   "
