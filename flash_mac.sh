@@ -10,8 +10,6 @@ underline=$(tput smul)
 normal=$(tput sgr0)
 
 # Update
-B2G_OBJDIR="update/gecko/b2g"
-GAIA_INSTALL_PARENT="/system/b2g"
 files_dir="files/"
 B2G_PREF_DIR=/system/b2g/defaults/pref
 
@@ -244,14 +242,6 @@ function root_inari() {
     done
 }
 
-function delete_extra_gecko_files_on_device() {
-    files_to_remove="$(cat <(ls $B2G_OBJDIR) <(./adb.mac shell "ls /system/b2g" | tr -d '\r') | sort | uniq -u)"
-    if [ "$files_to_remove" != "" ]; then
-        ./adb.mac shell "cd /system/b2g && rm $files_to_remove" > /dev/null
-    fi
-    return 0
-}
-
 function verify_update() {
     echo "Was your device updated?"
     PS3='?: '
@@ -274,71 +264,26 @@ function verify_update() {
 }
 
 function go_update() {
-    # Working on gecko
-    echo "Flashing Gecko"
-    echo " "
-    ./adb.mac wait-for-device
-    ./adb.mac shell stop b2g &&
-    ./adb.mac remount &&
-    delete_extra_gecko_files_on_device &&
-    ./adb.mac push $B2G_OBJDIR /system/b2g &&
-    echo " "
-    echo "Restarting B2G ...." &&
-    echo " "
-    ./adb.mac shell start b2g
-
-    # Working on gaia
-    echo "Flashing Gaia"
-    echo " "
-    ./adb.mac shell stop b2g
-    for FILE in `./adb.mac shell ls /data/local | tr -d '\r'`;
-    do
-        if [ $FILE != 'tmp' ]; then
-            ./adb.mac shell rm -r /data/local/$FILE
-        fi
+    ./adb.mac shell "rm /sdcard/fxosbuilds/update.zip"
+    echo "Pushing update to sdCard"
+    ./adb.mac push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
+    echo "Remounting partitions"
+    ./adb.mac remount
+    echo "Configuring recovery to apply the update"
+    ./adb.mac shell "echo 'boot-recovery ' > /cache/recovery/command"
+    ./adb.mac shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
+    ./adb.mac shell "echo '--wipe_cache' >> /cache/recovery/command"
+    echo "Do you want to erase data partition?"
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) ./adb.mac shell "echo '--wipe_data' >> /cache/recovery/command"; break;;
+            No ) break;;
+        esac
     done
-    ./adb.mac shell rm -r /cache/*
-    ./adb.mac shell rm -r /data/b2g/*
-    ./adb.mac shell rm -r /data/local/webapps
-    ./adb.mac remount
-    ./adb.mac shell rm -r /system/b2g/webapps
-
-    echo " "
-    echo "Installing Gaia"
-    ./adb.mac start-server
-    ./adb.mac shell stop b2g 
-    ./adb.mac shell rm -r /cache/*
-    echo ""
-    echo "Remounting partition to start the gaia install"
-    ./adb.mac remount
-    cd update/gaia
-    python ../install-gaia.py "../adb.mac" ${GAIA_INSTALL_PARENT}
-    cd ..
-    echo ""
-    echo "Gaia installed"
-    echo ""
-    echo "Starting system"
-    cd ..
-    ./adb.mac shell start b2g
-    echo "..."
-    # install default data
-    ./adb.mac shell stop b2g
-    echo "......"
-    ./adb.mac remount
-    echo "........."
-    ./adb.mac push update/gaia/profile/settings.json /system/b2g/defaults/settings.json
-    #ifdef CONTACTS_PATH
-    #    ./adb.mac push profile/contacts.json /system/b2g/defaults/contacts.json
-    #else
-    echo "............"
-    ./adb.mac shell rm /system/b2g/defaults/contacts.json
-    #endif
-    echo "${green}DONE!${normal}"
-    ./adb.mac shell start b2g
-    echo " "
-    ./adb.mac reboot
+    ./adb.mac shell "echo 'reboot' >> /cache/recovery/command"
+    ./adb.mac shell "reboot recovery"
     ./adb.mac wait-for-device
-    update_channel
+    echo "Updated!"
     sleep 2
     verify_update
 }
