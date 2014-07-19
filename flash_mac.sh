@@ -19,14 +19,13 @@ function pause(){
 
 function channel_ota {
     echo "Remounting..."
-    ./adb.mac remount
+    ./adb.mac shell echo "mount -o rw,remount /system" \| su
     echo "Removing old channel"
     ./adb.mac shell "rm /system/b2g/defaults/pref/updates.js"
     echo "Pushing new OTA channel"
     ./adb.mac push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
     echo "Rebooting-..."
     ./adb.mac reboot
-    ./adb.mac wait-for-device
 }
 
 function update_channel {
@@ -38,75 +37,26 @@ function update_channel {
     echo "Are you ready?: "
     select yn in "Yes" "No"; do
         case $yn in
-            Yes ) channel_ota; main;;
-            No ) echo "Aborted"; main;;
+            Yes ) channel_ota;;
+            No ) echo "Aborted";;
         esac
     done
 }
 
-function adb_hamachi_root() {
+function verify_root() {
     echo ""
-    rm -r boot-init
-    ./adb.mac shell "rm /sdcard/fxosbuilds/newboot.img"
-    echo "Creating a copy of boot.img"
-    ./adb.mac shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
-    echo "building the workspace"
-    mkdir boot-init
-    cp ${files_dir}mkbootfs boot-init/mkbootfs
-    cp ${files_dir}mkbootimg boot-init/mkbootimg
-    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
-    cp ${files_dir}hamachi-default.prop boot-init/default.prop
-    cd boot-init
-    echo "Copying your ${cyan}boot.img${normal} copy"
-    ./adb.mac pull /sdcard/fxosbuilds/boot.img
-    ./split_bootimg.pl boot.img
-    mkdir initrd
-    cd initrd 
-    mv ../boot.img-ramdisk.gz initrd.gz
-    echo "Boot change process"
-    gunzip initrd.gz
-    cpio -id < initrd
-    rm default.prop
-    echo "New ${cyan}default.prop${normal}"
-    cd ..
-    mv mkbootfs initrd/mkbootfs
-    mv default.prop initrd/default.prop
-    cd initrd
-    ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
-    cd ..
-    cd ..
-    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=hamachi' -o newboot.img
-    ./adb.mac push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
-    ./adb.mac shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-    echo "${green}Success!${normal}"
-    sleep 3
-}
-
-function adb_root_select() {
-    echo "${green} "
-    echo "        ............................................................."
-    echo "${cyan} "
-    echo " "
-    echo "             Connect your phone to USB, then:"
-    echo " "
-    echo "             Settings -> Device information -> More Information"
-    echo "             -> Developer and enable 'Remote debugging'"
-    echo "${green} "
-    echo "        ............................................................."
-    echo "${normal} "
-    PS3='Are you ready to start adb root process?: '
-    options=("Yes" "No" "Back menu")
+    echo "Was your device rooted?"
+    PS3='?: '
+    options=("Yes" "No")
     select opt in "${options[@]}"
     do
         case $opt in
             "Yes")
-                adb_hamachi_root
+                echo "Nice"
                 ;;
             "No")
-                echo "Carefull! you need to have root access to update"
-                main
-                ;;
-            "Back menu")
+                echo "Please, contact us. We will look what we can do for you."
+                sleep 2
                 main
                 ;;
             *) echo "** Invalid option **";;
@@ -119,7 +69,7 @@ function root_hamachi_ready() {
     echo "Rebooting the device"
     ./adb.mac reboot bootloader
     echo "Flashing the new recovery"
-    ./${files_dir}fastboot flash recovery root/hamachi_clockworkmod_recovery.img
+    ./fastboot.mac flash recovery root/hamachi_clockworkmod_recovery.img
     echo ""
     echo "Now power off your device, and retire the battery for 5 seconds, be sure"
     echo "of your device is pluged to your computer."
@@ -144,15 +94,10 @@ function root_hamachi_ready() {
     echo "Rooted"
     sleep 1
     echo ""
-    echo "Now we are going to get adb root access"
-    echo ""
-    adb_hamachi_root
     echo "Rebooting device"
     ./adb.mac reboot
     ./adb.mac wait-for-device
-    echo "Returning to main menu"
-    sleep 2
-    main
+    verify_root
 }
 
 function root_hamachi() {
@@ -184,31 +129,35 @@ function verify_update() {
         case $opt in
             "Yes")
                 echo "Nice"
-                main
-                break;;
+                ;;
             "No")
                 echo "Please, contact us. We will look what we can do for you."
                 sleep 2
                 main
-                break;;
+                ;;
             *) echo "** Invalid option **";;
         esac
     done
 }
 
 function go_update() {
-    ./adb.mac shell "rm /sdcard/fxosbuilds/update.zip"
-    echo "Pushing update to sdCard"
-    ./adb.mac push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
-    echo "Remounting partitions"
-    ./adb.mac remount
-    echo "Configuring recovery to apply the update"
-    ./adb.mac shell "echo 'boot-recovery ' > /cache/recovery/command"
-    ./adb.mac shell "echo '--wipe_cache' >> /cache/recovery/command"
-    ./adb.mac shell "echo '--wipe_data' >> /cache/recovery/command"
-    ./adb.mac shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
-    ./adb.mac shell "echo 'reboot' >> /cache/recovery/command"
-    ./adb.mac shell "reboot recovery"
+    echo "Rebooting in fastboot mode"
+    ./adb.mac reboot bootloader
+    echo "Flashing boot"
+    ./fastboot.mac flash update/boot boot.img
+    echo "Do you want to keep your user data ? (Some users has problems in first reboot, if you have, please reflash and select not to keep the data)"
+    select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) break;;
+            No ) ./fastboot.mac flash userdata update/userdata.img; break;;
+        esac
+    done
+    echo "Flashing system"
+    ./fastboot.mac flash update/system system.img
+    echo "Removing cache"
+    ./fastboot.mac erase cache
+    echo "Rebooting"
+    ./fastboot.mac reboot
     ./adb.mac wait-for-device
     echo "Updated!"
     sleep 2
@@ -276,6 +225,7 @@ function root_accepted() {
                 ;;
             "No")
                 echo "Back when you are ready"
+                main
                 ;;
             "Back menu")
                 main
@@ -379,6 +329,8 @@ function rules {
     echo ""
     echo "Applying permissions"
     sudo chmod a+r /etc/udev/rules.d/51-android.rules
+    echo "Done!"
+    sleep 1
 }
 
 function option_two() {
@@ -390,24 +342,25 @@ function option_two() {
     echo "       ............................................................."
     echo "${normal} "
     PS3='#?: '
-    options=("Root" "ADB root" "Update" "Change update channel" "Android rules" "Back menu")
+    options=("Root" "Update" "Change update channel" "Android rules" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
             "Root")
                 root
-                ;;
-            "ADB root")
-                adb_root_select
+                main
                 ;;
             "Update")
                 update
+                main
                 ;;
             "Change update channel")
                 update_channel
+                main
                 ;;
             "Android rules")
                 rules
+                main
                 ;;
             "Back menu")
                 main
@@ -421,33 +374,38 @@ function option_one {
     rules
     root
     update
+    update_channel
+    main
 }
 
 function about {
     echo "Credits and about info here"
     pause "Press ${red}[Enter]${normal} to return main menu..."
+    main
 }
 
 function main() {
     echo ""
-    echo "${green} ............................................................."
+    echo "${green}       ............................................................."
     echo " "
     echo " "
     echo " "
-    echo " ${cyan} ${cyan}              FirefoxOS Builds installer "
+    echo "    ${cyan}                   ${cyan}FirefoxOS Builds installer       "
     echo " "
     echo " "
     echo " "
-    echo "${green} ............................................................."
+    echo "${green}       ............................................................."
     echo ""
     echo ""
-    echo " ${normal}Welcome to the FirefoxOS Builds installer. Please enter the number of"
-    echo " your selection & follow the prompts."
+    echo " ${normal} Welcome to the FirefoxOS Builds installer. Please enter the number of"
+    echo "  your selection & follow the prompts."
     echo ""
     echo ""
-    echo " 1) Update your device"
-    echo " 2) Advanced"
-    echo " 3) Exit"
+    echo "      1)  Update your device"
+    echo "      2)  Advanced"
+    echo "      3)  Exit"
+    echo ""
+    echo "      0)  About"
     echo ""
     read mainmen
     if [ "$mainmen" == 1 ] ; then
@@ -458,14 +416,14 @@ function main() {
         about
     elif [ "$mainmen" == 3 ] ; then
         echo ""
-        echo "              ------------------------------------------"
-        echo "                 Exiting FirefoxOS Builds installer "
+        echo "                    ------------------------------------------"
+        echo "                        Exiting FirefoxOS Builds installer   "
         sleep 2
         exit 0
     elif [ "$mainmen" != 1 ] && [ "$mainmen" != 2 ] && [ "$mainmen" != 0 ]; then
         echo ""
         echo ""
-        echo " Enter a valid number "
+        echo "                        Enter a valid number   "
         echo ""
         sleep 2
         main
