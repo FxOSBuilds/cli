@@ -354,8 +354,6 @@ IF /I '%INPUT%'!='4' GOTO bad_number
 goto:eof
 
 :option_one
-call:rules
-call:root
 call:update
 call:update_channel
 call:main

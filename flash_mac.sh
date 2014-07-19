@@ -391,7 +391,6 @@ function option_two() {
 
 function option_one {
     rules
-    root
     update
     update_channel
     main
