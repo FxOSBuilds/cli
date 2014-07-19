@@ -46,6 +46,45 @@ goto:eof
 echo. text
 goto:eof
 
+:adb_inari_root
+echo.
+rm -r boot-init
+adb.exe shell "rm /sdcard/fxosbuilds/newboot.img"
+echo Creating a copy of ${cyan}boot.img${normal}
+adb.exe shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
+echo building the workspace
+mkdir boot-init
+cp ${files_dir}mkbootfs boot-init/mkbootfs
+cp ${files_dir}mkbootimg boot-init/mkbootimg
+cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
+cp ${files_dir}inari-default.prop boot-init/default.prop
+cd boot-init
+echo Copying your ${cyan}boot.img${normal} copy
+../adb pull /sdcard/fxosbuilds/boot.img
+./split_bootimg.pl boot.img
+mkdir initrd
+cd initrd 
+echo ready....
+mv ../boot.img-ramdisk.gz initrd.gz
+echo Boot change process
+gunzip initrd.gz
+cpio -id < initrd
+rm default.prop
+echo New ${cyan}default.prop${normal}
+cd ..
+mv mkbootfs initrd/mkbootfs
+mv default.prop initrd/default.prop
+cd initrd
+./mkbootfs . | gzip > ../newinitramfs.cpio.gz
+cd ..
+./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
+cd ..
+adb.exe push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
+adb.exe shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
+echo Success!
+sleep 3
+goto:eof
+
 :downgrade_inari
 echo.
 echo We are going to push some files to the sdcard
@@ -83,6 +122,35 @@ adb.exe wait-for-device
 GOTO downgrade_inari_root_success
 goto:eof
 
+:adb_root_select
+echo.
+echo        .............................................................
+echo.
+echo.
+echo              Connect your phone to USB, then:
+echo.
+echo              Settings -> Device information -> More Information
+echo              -> Developer and enable 'Remote debugging'
+echo.
+echo        .............................................................
+echo. 
+echo          1) Yes
+echo          2) No
+echo          3) Back menu
+echo.
+echo.
+
+SET INPUT=
+SET /P INPUT=Are you ready to start adb root process?:
+
+IF /I '%INPUT%'=='1' GOTO adb_inari_root
+IF /I '%INPUT%'=='2' echo Carefull! you need to have root access to update
+IF /I '%INPUT%'=='3' GOTO main
+IF /I '%INPUT%'!='1' GOTO bad_number
+IF /I '%INPUT%'!='2' GOTO bad_number
+IF /I '%INPUT%'!='3' GOTO bad_number
+goto:eof
+
 :recovery_inari
 echo Preparing
 adb.exe shell mkdir /sdcard/fxosbuilds
@@ -108,8 +176,8 @@ echo.
 echo              Connect your phone to USB, then:
 echo. 
 echo              Settings -> Device information -> More Information
-echo              -> Developer and enable 'Remote debugging'
-echo. 
+echo              -> Developer and enable 'Remote debugging'${normal}
+echo- 
 echo              The exploit used to get root works only on FirefoxOS v1.0
 echo              Your ZTE Open is running Firefox OS 1.0?
 echo. 
@@ -213,7 +281,7 @@ goto:eof
 echo.
 echo        .............................................................
 echo.
-echo.
+echo
 echo              Connect your phone to USB, then:
 echo.
 echo              Settings -> Device information -> More Information
@@ -223,6 +291,8 @@ echo        .............................................................
 echo.
 echo             1) Yes
 echo             2) No
+echo.
+echo        Are you ready?: 
 echo.
 
 SET INPUT=
@@ -320,9 +390,10 @@ echo.
 echo       .............................................................
 echo.
 echo       1) Root
-echo       2) Update
-echo       3) Change update channel
-echo       4) Back menu
+echo       2) ADB root
+echo       3) Update
+echo       4) Change update channel
+echo       5) Back menu
 echo.
 echo.
 
@@ -330,13 +401,15 @@ SET INPUT=
 SET /P INPUT=#?:
 
 IF /I '%INPUT%'=='1' GOTO root
-IF /I '%INPUT%'=='2' GOTO update
-IF /I '%INPUT%'=='3' GOTO update_channel
-IF /I '%INPUT%'=='4' GOTO main
+IF /I '%INPUT%'=='2' GOTO adb_root_select
+IF /I '%INPUT%'=='3' GOTO update
+IF /I '%INPUT%'=='4' GOTO update_channel
+IF /I '%INPUT%'=='5' GOTO main
 IF /I '%INPUT%'!='1' GOTO bad_number
 IF /I '%INPUT%'!='2' GOTO bad_number
 IF /I '%INPUT%'!='3' GOTO bad_number
 IF /I '%INPUT%'!='4' GOTO bad_number
+IF /I '%INPUT%'!='5' GOTO bad_number
 goto:eof
 
 :option_one

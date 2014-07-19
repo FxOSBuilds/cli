@@ -19,7 +19,7 @@ function pause(){
 
 function channel_ota {
     echo "Remounting..."
-    ./adb.mac shell echo "mount -o rw,remount /system" \| su
+    ./adb.mac remount
     echo "Removing old channel"
     ./adb.mac shell "rm /system/b2g/defaults/pref/updates.js"
     echo "Pushing new OTA channel"
@@ -38,8 +38,8 @@ function update_channel {
     echo "Are you ready?: "
     select yn in "Yes" "No"; do
         case $yn in
-            Yes ) channel_ota;;
-            No ) echo "Aborted";;
+            Yes ) channel_ota; main;;
+            No ) echo "Aborted"; main;;
         esac
     done
 }
@@ -53,6 +53,45 @@ function downgrade_inari_root_success() {
             No ) echo "Please contact us with the logs"; main;;
         esac
     done
+}
+
+function adb_inari_root() {
+    echo ""
+    rm -r boot-init
+    ./adb.mac shell "rm /sdcard/fxosbuilds/newboot.img"
+    echo "Creating a copy of ${cyan}boot.img${normal}"
+    ./adb.mac shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
+    echo "building the workspace"
+    mkdir boot-init
+    cp ${files_dir}mkbootfs boot-init/mkbootfs
+    cp ${files_dir}mkbootimg boot-init/mkbootimg
+    cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
+    cp ${files_dir}inari-default.prop boot-init/default.prop
+    cd boot-init
+    echo "Copying your ${cyan}boot.img${normal} copy"
+    ../adb.mac pull /sdcard/fxosbuilds/boot.img
+    ./split_bootimg.pl boot.img
+    mkdir initrd
+    cd initrd 
+    echo "ready...."
+    mv ../boot.img-ramdisk.gz initrd.gz
+    echo "Boot change process"
+    gunzip initrd.gz
+    cpio -id < initrd
+    rm default.prop
+    echo "New ${cyan}default.prop${normal}"
+    cd ..
+    mv mkbootfs initrd/mkbootfs
+    mv default.prop initrd/default.prop
+    cd initrd
+    ./mkbootfs . | gzip > ../newinitramfs.cpio.gz
+    cd ..
+    ./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
+    cd ..
+    ./adb.mac push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
+    ./adb.mac shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
+    echo "${green}Success!${normal}"
+    sleep 3
 }
 
 function downgrade_inari() {
@@ -92,8 +131,38 @@ function downgrade_inari() {
     downgrade_inari_root_success
 }
 
+function adb_root_select() {
+    echo "${green}   "
+    echo "       ............................................................."
+    echo "${cyan}   "
+    echo "   "
+    echo "             Connect your phone to USB, then:"
+    echo "   "
+    echo "             Settings -> Device information -> More Information"
+    echo "             -> Developer and enable 'Remote debugging'"
+    echo "${green}  "
+    echo "       ............................................................."
+    echo "${normal}   "
+    PS3='Are you ready to start adb root process?: '
+    options=("Yes" "No" "Back menu")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Yes")
+                adb_inari_root
+                ;;
+            "No")
+                echo "Carefull! you need to have root access to update"
+                ;;
+            "Back menu")
+                main
+                ;;
+            *) echo "** Invalid option **";;
+        esac
+    done 
+}
+
 function recovery_inari() {
-    echo ""
     echo "Preparing"
     ./adb.mac shell mkdir /sdcard/fxosbuilds
     ./adb.mac shell "rm /sdcard/fxosbuilds/cwm.img"
@@ -148,10 +217,15 @@ function root_inari_ready() {
             sleep 2
             recovery_inari
             echo ""
+            echo"Getting adb root access"
+            adb_inari_root
+            echo ""
             echo "Rebooting "
             sleep 1
             ./adb.mac reboot
+            echo "Returning to main menu"
             sleep 3
+            main
         fi
     done
 }
@@ -186,6 +260,7 @@ function verify_update() {
         case $opt in
             "Yes")
                 echo "Nice"
+                main
                 ;;
             "No")
                 echo "Please, contact us. We will look what we can do for you."
@@ -202,7 +277,7 @@ function go_update() {
     echo "Pushing update to sdCard"
     ./adb.mac push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
     echo "Remounting partitions"
-    ./adb.mac shell echo "mount -o rw,remount /system" \| su
+    ./adb.mac remount
     echo "Configuring recovery to apply the update"
     ./adb.mac shell "echo 'boot-recovery ' > /cache/recovery/command"
     ./adb.mac shell "echo '--wipe_data' >> /cache/recovery/command"
@@ -215,7 +290,6 @@ function go_update() {
     echo "Updated!"
     sleep 2
     verify_update
-    main
 }
 
 function update_accepted() {
@@ -391,21 +465,21 @@ function option_two() {
     echo "       ............................................................."
     echo "${normal}   "
     PS3='#?: '
-    options=("Root" "Update" "Change update channel" "Android rules" "Back menu")
+    options=("Root" "ADB root" "Update" "Change update channel" "Android rules" "Back menu")
     select opt in "${options[@]}"
     do
         case $opt in
             "Root")
                 root
-                main
+                ;;
+            "ADB root")
+                adb_root_select
                 ;;
             "Update")
                 update
-                main
                 ;;
             "Change update channel")
                 update_channel
-                main
                 ;;
             "Android rules")
                 rules
@@ -423,14 +497,11 @@ function option_one {
     rules
     root
     update
-    update_channel
-    main
 }
 
 function about {
     echo "Credits and about info here"
     pause "Press ${red}[Enter]${normal} to return main menu..."
-    main
 }
 
 function main() {   
