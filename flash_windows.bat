@@ -365,7 +365,8 @@ goto:eof
 
 :about
 echo Credits and about info here
-pause Press ${red}[Enter]${normal} to return main menu...
+echo Press ${red}[Enter]${normal} to return main menu...
+PAUSE >nul
 call:main
 goto:eof
 
