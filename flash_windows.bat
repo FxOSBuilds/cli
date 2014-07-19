@@ -13,7 +13,6 @@ echo Pushing new OTA channel
 adb.exe push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
 echo Rebooting-...
 adb.exe reboot
-adb.exe wait-for-device
 goto:eof
 
 :update_channel
@@ -32,57 +31,34 @@ SET /P INPUT=Are you ready?:
 
 IF /I '%INPUT%'=='1' (
 GOTO channel_ota 
-GOTO main
 )
 IF /I '%INPUT%'=='2' (
 echo Aborted 
-GOTO main
 )
 IF /I '%INPUT%'!='1' GOTO bad_number
 IF /I '%INPUT%'!='2' GOTO bad_number
 goto:eof
 
 :downgrade_inari_root_success
-echo. text
-goto:eof
-
-:adb_inari_root
 echo.
-rm -r boot-init
-adb.exe shell "rm /sdcard/fxosbuilds/newboot.img"
-echo Creating a copy of ${cyan}boot.img${normal}
-adb.exe shell echo 'cat /dev/mtd/mtd1 > /sdcard/fxosbuilds/boot.img' \| su
-echo building the workspace
-mkdir boot-init
-cp ${files_dir}mkbootfs boot-init/mkbootfs
-cp ${files_dir}mkbootimg boot-init/mkbootimg
-cp ${files_dir}split_bootimg.pl boot-init/split_bootimg.pl
-cp ${files_dir}inari-default.prop boot-init/default.prop
-cd boot-init
-echo Copying your ${cyan}boot.img${normal} copy
-../adb pull /sdcard/fxosbuilds/boot.img
-./split_bootimg.pl boot.img
-mkdir initrd
-cd initrd 
-echo ready....
-mv ../boot.img-ramdisk.gz initrd.gz
-echo Boot change process
-gunzip initrd.gz
-cpio -id < initrd
-rm default.prop
-echo New ${cyan}default.prop${normal}
-cd ..
-mv mkbootfs initrd/mkbootfs
-mv default.prop initrd/default.prop
-cd initrd
-./mkbootfs . | gzip > ../newinitramfs.cpio.gz
-cd ..
-./mkbootimg --kernel zImage --ramdisk newinitramfs.cpio.gz --base 0x200000 --cmdline 'androidboot.hardware=roamer2' -o newboot.img
-cd ..
-adb.exe push boot-init/newboot.img /sdcard/fxosbuilds/newboot.img
-adb.exe shell echo 'flash_image boot /sdcard/fxosbuilds/newboot.img' \| su
-echo Success!
-sleep 3
+echo Was your ZTE Open downgraded successful to FirefoxOS 1.0?
+echo.
+echo   1) Yes
+echo   2) No
+echo.
+
+SET INPUT=
+SET /P INPUT=#?:
+
+IF /I '%INPUT%'=='1' (
+GOTO root_inari_ready 
+)
+IF /I '%INPUT%'=='2' (
+echo Please contact us with the logs
+GOTO main
+)
+IF /I '%INPUT%'!='1' GOTO bad_number
+IF /I '%INPUT%'!='2' GOTO bad_number
 goto:eof
 
 :downgrade_inari
@@ -100,7 +76,8 @@ sleep 3
 echo.
 echo Now you need to install first the inari-update.zip package
 echo.
-pause Press [Enter] when you finished it to continue...
+echo Press [Enter] when you finished it to continue...
+PAUSE >nul
 adb.exe wait-for-device
 echo.
 echo Now your device will be on a bootloop. Don't worry is the
@@ -109,46 +86,19 @@ adb.exe reboot recovery
 echo.
 echo Now you need to install first the inari-update-signed.zip package
 echo.
-pause Press ${red}[Enter]${normal} when you finished it to continue...
+echo Press ${red}[Enter]${normal} when you finished it to continue...
+PAUSE >nul
 adb.exe.exe wait-for-device
 echo.
 echo Now finish the new setup of FirefoxOS.
 echo.
-pause Press ${red}[Enter]${normal} when you finished it to continue...
+echo Press ${red}[Enter]${normal} when you finished it to continue...
+PAUSE >nul
 echo Rebooting device
 adb.exe reboot
 echo.
 adb.exe wait-for-device
 GOTO downgrade_inari_root_success
-goto:eof
-
-:adb_root_select
-echo.
-echo        .............................................................
-echo.
-echo.
-echo              Connect your phone to USB, then:
-echo.
-echo              Settings -> Device information -> More Information
-echo              -> Developer and enable 'Remote debugging'
-echo.
-echo        .............................................................
-echo. 
-echo          1) Yes
-echo          2) No
-echo          3) Back menu
-echo.
-echo.
-
-SET INPUT=
-SET /P INPUT=Are you ready to start adb root process?:
-
-IF /I '%INPUT%'=='1' GOTO adb_inari_root
-IF /I '%INPUT%'=='2' echo Carefull! you need to have root access to update
-IF /I '%INPUT%'=='3' GOTO main
-IF /I '%INPUT%'!='1' GOTO bad_number
-IF /I '%INPUT%'!='2' GOTO bad_number
-IF /I '%INPUT%'!='3' GOTO bad_number
 goto:eof
 
 :recovery_inari
@@ -166,7 +116,32 @@ echo Success!
 goto:eof
 
 :root_inari_ready
-echo. text
+echo.
+echo             ** Read first **
+echo 
+echo Not unplug your device if the device freezes or
+echo is stucked on boot logo. Just use the power
+echo button to turn off your device and turn on again
+echo to try again the exploit.
+echo.
+sleep 6
+echo
+echo    .......................................................
+echo. 
+echo        If you get an error like this: 
+echo.
+echo                  ${green}error: device not found${normal}
+echo.
+echo        Do not unplug your device. Just use the power
+echo        button to reboot your device. The process will
+echo        continue after reboot.
+echo.
+echo    .......................................................
+echo.
+sleep 6
+adb.exe wait-for-device
+adb.exe push root-zte-open /data/local/tmp/
+adb.exe shell /data/local/tmp/root-zte-open
 goto:eof
 
 :root_inari
@@ -176,8 +151,8 @@ echo.
 echo              Connect your phone to USB, then:
 echo. 
 echo              Settings -> Device information -> More Information
-echo              -> Developer and enable 'Remote debugging'${normal}
-echo- 
+echo              -> Developer and enable 'Remote debugging'
+echo. 
 echo              The exploit used to get root works only on FirefoxOS v1.0
 echo              Your ZTE Open is running Firefox OS 1.0?
 echo. 
@@ -205,12 +180,9 @@ echo.
 SET INPUT=
 SET /P INPUT=?: 
 
-IF /I '%INPUT%'=='1' (
-echo Nice
-GOTO main
-)
+IF /I '%INPUT%'=='1' echo Nice
 IF /I '%INPUT%'=='2' (
-echo Please, contact us. We will look what we can do for you.
+echo Please, contact us. We will look what we can do for you
 sleep 2
 GOTO main
 )
@@ -223,14 +195,14 @@ adb.exe shell "rm /sdcard/fxosbuilds/update.zip"
 echo Pushing update to sdCard
 adb.exe push update/update.zip /sdcard/fxosbuilds/update.zip || exit 1
 echo Remounting partitions
-adb.exe remount
+adb.exe shell echo "mount -o rw,remount /system" \| su
 echo Configuring recovery to apply the update
 adb.exe shell "echo 'boot-recovery ' > /cache/recovery/command"
 adb.exe shell "echo '--wipe_data' >> /cache/recovery/command"
 adb.exe shell "echo '--wipe_cache' >> /cache/recovery/command"
 adb.exe shell "echo '--update_package=/sdcard/fxosbuilds/update.zip' >> /cache/recovery/command"
 adb.exe shell "echo 'reboot' >> /cache/recovery/command"
-echo Reeboting into recovery
+echo Rebooting into recovery
 adb.exe shell "reboot recovery"
 adb.exe wait-for-device
 echo Updated!
@@ -281,7 +253,7 @@ goto:eof
 echo.
 echo        .............................................................
 echo.
-echo
+echo.
 echo              Connect your phone to USB, then:
 echo.
 echo              Settings -> Device information -> More Information
@@ -291,8 +263,6 @@ echo        .............................................................
 echo.
 echo             1) Yes
 echo             2) No
-echo.
-echo        Are you ready?: 
 echo.
 
 SET INPUT=
@@ -341,7 +311,7 @@ SET /P INPUT=Do you agree?:
 
 IF /I '%INPUT%'=='1' GOTO root_accepted
 IF /I '%INPUT%'=='2' GOTO not_agree
-IF /I '%INPUT%'=='3' exit
+IF /I '%INPUT%'=='3' exit 0
 IF /I '%INPUT%'!='1' GOTO bad_number
 IF /I '%INPUT%'!='2' GOTO bad_number
 IF /I '%INPUT%'!='3' GOTO bad_number
@@ -375,7 +345,7 @@ SET /P INPUT=Do you agree?:
 
 IF /I '%INPUT%'=='1' GOTO update_accepted
 IF /I '%INPUT%'=='2' GOTO not_agree
-IF /I '%INPUT%'=='3' exit
+IF /I '%INPUT%'=='3' exit 0
 IF /I '%INPUT%'!='1' GOTO bad_number
 IF /I '%INPUT%'!='2' GOTO bad_number
 IF /I '%INPUT%'!='3' GOTO bad_number
@@ -390,37 +360,50 @@ echo.
 echo       .............................................................
 echo.
 echo       1) Root
-echo       2) ADB root
-echo       3) Update
-echo       4) Change update channel
-echo       5) Back menu
+echo       2) Update
+echo       3) Change update channel
+echo       4) Back menu
 echo.
 echo.
 
 SET INPUT=
 SET /P INPUT=#?:
 
-IF /I '%INPUT%'=='1' GOTO root
-IF /I '%INPUT%'=='2' GOTO adb_root_select
-IF /I '%INPUT%'=='3' GOTO update
-IF /I '%INPUT%'=='4' GOTO update_channel
-IF /I '%INPUT%'=='5' GOTO main
+IF /I '%INPUT%'=='1' (
+GOTO root
+main
+) 
+IF /I '%INPUT%'=='2' (
+GOTO update
+main
+) 
+IF /I '%INPUT%'=='3' (
+GOTO update_channel
+main
+)
+IF /I '%INPUT%'=='4' (
+GOTO main
+main
+) 
 IF /I '%INPUT%'!='1' GOTO bad_number
 IF /I '%INPUT%'!='2' GOTO bad_number
 IF /I '%INPUT%'!='3' GOTO bad_number
 IF /I '%INPUT%'!='4' GOTO bad_number
-IF /I '%INPUT%'!='5' GOTO bad_number
 goto:eof
 
 :option_one
 call:rules
 call:root
 call:update
+call:update_channel
+call:main
 goto:eof
 
 :about
 echo Credits and about info here
-pause Press ${red}[Enter]${normal} to return main menu...
+echo Press ${red}[Enter]${normal} to return main menu...
+PAUSE >nul
+call:main
 goto:eof
 
 :bad_number
