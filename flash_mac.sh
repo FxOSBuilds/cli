@@ -313,7 +313,7 @@ function update() {
     done
 }
 
-function rules {
+function rules-start {
     echo ""
     echo "We need the password you use with sudo,"
     echo "to copy the rules in your system."
@@ -331,6 +331,27 @@ function rules {
     sudo chmod a+r /etc/udev/rules.d/51-android.rules
     echo "Done!"
     sleep 1
+}
+
+function rules {
+    echo ""
+    echo "This will delete your 51-android.rules file for"
+    echo "another with all the rules, for all the devices."
+    echo ""
+    PS3='Are you sure to continue?: '
+    options=("Yes" "No")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Yes")
+                rules-start
+                ;;
+            "No")
+                echo "No problem :)"
+                ;;
+            *) echo "** Invalid option **";;
+        esac
+    done
 }
 
 function option_two() {
