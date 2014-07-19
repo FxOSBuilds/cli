@@ -148,8 +148,6 @@ goto:eof
 :go_update
 echo Rebooting in fastboot mode
 adb.exe. reboot bootloader
-echo Flashing boot
-fastboot.exe flash update/boot boot.img
 echo Do you want to keep your user data ? (Some users has problems in first reboot, if you have, please reflash and select not to keep the data)
 echo   1) Yes
 echo   2) No

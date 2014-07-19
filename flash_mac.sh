@@ -143,8 +143,6 @@ function verify_update() {
 function go_update() {
     echo "Rebooting in fastboot mode"
     ./adb.mac reboot bootloader
-    echo "Flashing boot"
-    ./fastboot.mac flash update/boot boot.img
     echo "Do you want to keep your user data ? (Some users has problems in first reboot, if you have, please reflash and select not to keep the data)"
     select yn in "Yes" "No"; do
         case $yn in
