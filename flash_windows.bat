@@ -10,7 +10,7 @@ adb.exe remount
 echo Removing old channel
 adb.exe shell "rm /system/b2g/defaults/pref/updates.js"
 echo Pushing new OTA channel
-adb.exe push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
+adb.exe push files/updates.js $B2G_PREF_DIR/updates.js
 echo Rebooting-...
 adb.exe reboot
 goto:eof
@@ -20,7 +20,7 @@ echo.
 echo We are going to change the update channel,
 echo so, in the future you will receive updates
 echo without flash every time.
-sleep 2
+timeout /t 2 /nobreak
 echo.
 echo   1) Yes
 echo   2) No
@@ -55,7 +55,7 @@ SET /P INPUT=?:
 IF /I '%INPUT%'=='1' echo Nice
 IF /I '%INPUT%'=='2' (
 echo Please, contact us. We will look what we can do for you
-sleep 2
+timeout /t 2 /nobreak
 GOTO main
 )
 IF /I '%INPUT%'!='1' GOTO bad_number
@@ -91,7 +91,7 @@ echo.
 echo Waiting for device
 adb.exe wait-for-device
 echo Rooted
-sleep 1
+timeout /t 1 /nobreak
 echo.
 echo Rebooting device
 adb.exe reboot
@@ -138,7 +138,7 @@ SET /P INPUT=?:
 IF /I '%INPUT%'=='1' echo Nice
 IF /I '%INPUT%'=='2' (
 echo Please, contact us. We will look what we can do for you.
-sleep 2
+timeout /t 2 /nobreak
 GOTO main
 )
 IF /I '%INPUT%'!='1' GOTO bad_number
@@ -147,7 +147,7 @@ goto:eof
 
 :go_update
 echo Rebooting in fastboot mode
-adb.exe. reboot bootloader
+adb.exe reboot bootloader
 echo Do you want to keep your user data ? (Some users has problems in first reboot, if you have, please reflash and select not to keep the data)
 echo   1) Yes
 echo   2) No
@@ -166,7 +166,7 @@ echo Rebooting
 fastboot.exe reboot
 adb.exe wait-for-device
 echo Updated!
-sleep 2
+timeout /t 2 /nobreak
 goto verify_update
 goto:eof
 
@@ -195,12 +195,12 @@ SET /P INPUT=Are you ready?:
 
 IF /I '%INPUT%'=='1' (
 echo The update process will start in 5 seconds
-sleep 5
+timeout /t 5 /nobreak
 GOTO go_update
 )
 IF /I '%INPUT%'=='2' (
 echo You need to be root first to update
-sleep 2
+timeout /t 2 /nobreak
 GOTO root
 )
 IF /I '%INPUT%'=='3' GOTO main
@@ -241,7 +241,7 @@ goto:eof
 
 :not_agree
 echo ** You don't agree **
-sleep 3
+timeout /t 3 /nobreak
 GOTO main
 goto:eof
 
@@ -369,13 +369,13 @@ goto:eof
 :bad_number
 echo. 
 echo Enter a valid number
-sleep 2
+timeout /t 2 /nobreak
 goto:eof
 
 :bad_number_main
 echo. 
 echo Enter a valid number
-sleep 2
+timeout /t 2 /nobreak
 GOTO main
 goto:eof
 
@@ -383,7 +383,7 @@ goto:eof
 echo.
 echo       ------------------------------------------
 echo           Exiting FirefoxOS Builds installer 
-sleep 2
+timeout /t 2 /nobreak
 exit 0
 goto:eof
 
