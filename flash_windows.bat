@@ -6,7 +6,7 @@ call:main
 
 :channel_ota
 echo Remounting...
-adb.exe remount
+adb.exe shell echo "mount -o rw,remount /system" \| su
 echo Removing old channel
 adb.exe shell "rm /system/b2g/defaults/pref/updates.js"
 echo Pushing new OTA channel
