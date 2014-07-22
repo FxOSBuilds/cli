@@ -10,7 +10,7 @@ adb.exe remount
 echo Removing old channel
 adb.exe shell "rm /system/b2g/defaults/pref/updates.js"
 echo Pushing new OTA channel
-adb.exe push ${files_dir}/updates.js $B2G_PREF_DIR/updates.js
+adb.exe push files/updates.js $B2G_PREF_DIR/updates.js
 echo Rebooting-...
 adb.exe reboot
 goto:eof
@@ -20,7 +20,7 @@ echo.
 echo We are going to change the update channel,
 echo so, in the future you will receive updates
 echo without flash every time.
-sleep 2
+timeout /t 2 /nobreak
 echo.
 echo   1) Yes
 echo   2) No
@@ -72,7 +72,7 @@ adb.exe push root/inari-update-signed.zip /sdcard/fxosbuilds/inari-update-signed
 echo.
 echo Rebooting on recovery mode
 adb.exe reboot recovery
-sleep 3
+timeout /t 3 /nobreak
 echo.
 echo Now you need to install first the inari-update.zip package
 echo.
@@ -88,7 +88,7 @@ echo Now you need to install first the inari-update-signed.zip package
 echo.
 echo Press ${red}[Enter]${normal} when you finished it to continue...
 PAUSE >nul
-adb.exe.exe wait-for-device
+adb.exe wait-for-device
 echo.
 echo Now finish the new setup of FirefoxOS.
 echo.
@@ -124,7 +124,7 @@ echo is stucked on boot logo. Just use the power
 echo button to turn off your device and turn on again
 echo to try again the exploit.
 echo.
-sleep 6
+timeout /t 6 /nobreak
 echo
 echo    .......................................................
 echo. 
@@ -138,7 +138,7 @@ echo        continue after reboot.
 echo.
 echo    .......................................................
 echo.
-sleep 6
+timeout /t 6 /nobreak
 adb.exe wait-for-device
 adb.exe push root-zte-open /data/local/tmp/
 adb.exe shell /data/local/tmp/root-zte-open
@@ -183,7 +183,7 @@ SET /P INPUT=?:
 IF /I '%INPUT%'=='1' echo Nice
 IF /I '%INPUT%'=='2' (
 echo Please, contact us. We will look what we can do for you
-sleep 2
+timeout /t 2 /nobreak
 GOTO main
 )
 IF /I '%INPUT%'!='1' GOTO bad_number
@@ -206,7 +206,7 @@ echo Rebooting into recovery
 adb.exe shell "reboot recovery"
 adb.exe wait-for-device
 echo Updated!
-sleep 2
+timeout /t 2 /nobreak
 GOTO verify_update
 goto:eof
 
@@ -235,12 +235,12 @@ SET /P INPUT=Are you ready?:
 
 IF /I '%INPUT%'=='1' (
 echo The update process will start in 5 seconds
-sleep 5
+timeout /t 5 /nobreak
 GOTO go_update
 )
 IF /I '%INPUT%'=='2' (
 echo You need to be root first to update
-sleep 2
+timeout /t 2 /nobreak
 GOTO root
 )
 IF /I '%INPUT%'=='3' GOTO main
@@ -279,7 +279,7 @@ goto:eof
 
 :not_agree
 echo ** You don't agree **
-sleep 3
+timeout /t 3 /nobreak
 GOTO main
 goto:eof
 
@@ -409,13 +409,13 @@ goto:eof
 :bad_number
 echo. 
 echo Enter a valid number
-sleep 2
+timeout /t 2 /nobreak
 goto:eof
 
 :bad_number_main
 echo. 
 echo Enter a valid number
-sleep 2
+timeout /t 2 /nobreak
 GOTO main
 goto:eof
 
@@ -423,7 +423,7 @@ goto:eof
 echo.
 echo       ------------------------------------------
 echo           Exiting FirefoxOS Builds installer 
-sleep 2
+timeout /t 2 /nobreak
 exit 0
 goto:eof
 
