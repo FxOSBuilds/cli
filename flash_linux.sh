@@ -117,6 +117,7 @@ function root_hamachi() {
             No ) echo "You are not sure, come back when you will :)"; main; break;;
         esac
     done
+    return 0
 }
 
 function verify_update() {
@@ -257,6 +258,7 @@ function root() {
         case $opt in
             "Yes")
                 root_accepted
+                return 0
                 ;;
             "No")
                 echo "** You don't agree **";
@@ -329,6 +331,7 @@ function rules-start {
     sudo chmod a+r /etc/udev/rules.d/51-android.rules
     echo "Done!"
     sleep 1
+    return 0
 }
 
 function rules {
@@ -343,6 +346,7 @@ function rules {
         case $opt in
             "Yes")
                 rules-start
+                return 0
                 ;;
             "No")
                 echo "No problem :)"
