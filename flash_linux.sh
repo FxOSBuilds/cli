@@ -153,6 +153,7 @@ function root_inari_ready() {
             sleep 3
         fi
     done
+    return 0
 }
 
 function root_inari() {
@@ -306,6 +307,7 @@ function root() {
         case $opt in
             "Yes")
                 root_accepted
+		return 0
                 ;;
             "No")
                 echo "** You don't agree **";
@@ -378,6 +380,7 @@ function rules-start {
     sudo chmod a+r /etc/udev/rules.d/51-android.rules
     echo "Done!"
     sleep 1
+    return 0
 }
 
 function rules {
@@ -392,9 +395,11 @@ function rules {
         case $opt in
             "Yes")
                 rules-start
+		return 0
                 ;;
             "No")
                 echo "No problem :)"
+		return 1
                 ;;
             *) echo "** Invalid option **";;
         esac
