@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+#!/usr/bin/env node
 
 'use strict';
 
@@ -36,11 +36,11 @@ function promisify(fn) {
 }
 
 // Command-line arguments
-var yarg = yargs.usage('Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla\'s public build server (http://ftp.mozilla.org/pub/mozilla.org/b2g/nightly/).\nUsage: flash-b2g [device] [channel=central]')
-	.example('$0 flame 1.4', 'Flash a flame with 1.4 build.')
-	.example('$0 flame --folder ~/', 'Flash a flame with a nightly build (downloaded to ~/)')
-	.example('$0 flame --folder ~/ --local', 'Flash a Flame device with a previously downloaded build in ~/.')
-	.example('$0 hamachi aurora --eng', 'Flash an Hamachi device with an aurora engineering build.')
+var yarg = yargs.usage('Flash/Update your Firefox OS devices from FxOSBuilds public build server (http://downloads.firefoxosbuilds.org/).\nUsage: fxosbuilds [device] [channel=central]')
+	.example('$0 inari stable', 'Flash a inari with stable build.')
+	.example('$0 inari --folder ~/', 'Flash a inari with a nightly build (downloaded to ~/)')
+	.example('$0 inari --folder ~/ --local', 'Flash a inari device with a previously downloaded build in ~/.')
+	.example('$0 hamachi aurora --eng', 'Flash an hamachi device with an aurora engineering build.')
 	.string([1, 'device', 'channel', 'date'])
 	.alias({
 		'dir': 'd',
@@ -71,7 +71,10 @@ var yarg = yargs.usage('Shallow-flash Gecko and Gaia on Firefox OS devices from 
 		help: 'Show this help'
 	})
 	.strict();
+
 var argv = yarg.argv;
+
+// fxosbuilds [device]
 argv.device = (argv._[0] || argv.device || '').toLowerCase();
 if (argv.help || (!argv.device && !argv['only-remotify'])) {
 	console.log(yarg.help());
@@ -80,10 +83,14 @@ if (argv.help || (!argv.device && !argv['only-remotify'])) {
 	}
 	process.exit();
 }
+
+// fxosbuilds [channel]
 argv.channel = String(argv._[1] || argv.channel);
 if (/^\d+$/.test(argv.channel)) {
 	argv.channel += '.0';
 }
+
+// fxosbuilds [date]
 if (argv.date && argv.date != 'latest') {
 	argv.date = moment(argv.date);
 	if (!argv.date.isValid()) {
@@ -95,12 +102,30 @@ if (argv.date && argv.date != 'latest') {
 var env = process.env;
 
 // Constants
+var FTP_HOST_FXOSBUILDS = 'downloads.firefoxosbuilds.org';
 var FTP_HOST = 'ftp.mozilla.org';
 var FTP_URL = 'http://' + FTP_HOST;
+
+// We have a different path for every device
+// Define stable paths for every device
+var FTP_PATH_INARI_S = '/inari/stable/';
+var FTP_PATH_HAMACHI_S = '/hamachi/stable/';
+var FTP_PATH_LEO_S = '/leo/stable/';
+var FTP_PATH_HELIX_S = '/helix/stable/';
+var FTP_PATH_FLATFISH_S = '/flatfish/stable/';
+// Define nightly paths
 var FTP_PATH = '/pub/mozilla.org/b2g/nightly/';
+var FTP_PATH_INARI_N = '/inari/nightly/';
+var FTP_PATH_HAMACHI_N = '/hamachi/nightly/';
+var FTP_PATH_LEO_N = '/leo/nightly/';
+var FTP_PATH_HELIX_N = '/helix/nightly/';
+var FTP_PATH_FLATFISH_N = '/flatfish/nightly/';
+
+// Path for flash, root and tools
 var SCRIPT_PATH = path.join(__dirname, 'scripts');
 var FLASH_SCRIPT_PATH = path.join(SCRIPT_PATH, 'shallow_flash.sh');
 var BACKUP_SCRIPT_PATH = path.join(SCRIPT_PATH, 'backup_restore_profile.sh');
+
 var TIMEOUT = 60 * 60 * 1000; // 1min
 var ADB = process.env.ADB || 'adb';
 
