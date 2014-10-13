@@ -38,8 +38,8 @@ function promisify(fn) {
 // Command-line arguments
 var yarg = yargs.usage('Flash/Update your Firefox OS devices from FxOSBuilds public build server (http://downloads.firefoxosbuilds.org/).\nUsage: fxosbuilds [device] [channel=central]')
 	.example('$0 inari stable', 'Flash a inari with stable build.')
-	.example('$0 inari --folder ~/', 'Flash a inari with a nightly build (downloaded to ~/)')
-	.example('$0 inari --folder ~/ --local', 'Flash a inari device with a previously downloaded build in ~/.')
+	.example('$0 inari --dir ~/', 'Flash a inari with a nightly build (downloaded to ~/)')
+	.example('$0 inari --dir ~/ --local', 'Flash a inari device with a previously downloaded build in ~/.')
 	.example('$0 hamachi aurora --eng', 'Flash an hamachi device with an aurora engineering build.')
 	.string([1, 'device', 'channel', 'date'])
 	.alias({
