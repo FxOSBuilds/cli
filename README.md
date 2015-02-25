@@ -1,9 +1,6 @@
 # Flash B2G
-
+FxOSBuilds cli is a tool made on node.js to update production devices  
 Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build server with just one command.
-
-[![NPM version](http://img.shields.io/npm/v/flash-b2g.svg?style=flat)](https://www.npmjs.org/package/flash-b2g)
-[![Dependency Status](http://img.shields.io/gemnasium/digitarald/flash-b2g.svg?style=flat)](https://gemnasium.com/digitarald/flash-b2g)
 
 ## What does it do?
 
@@ -27,12 +24,17 @@ Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build s
 
 Firefox OS has [three layers](http://en.wikipedia.org/wiki/Firefox_OS#Core_technologies), where most development happens in the `Gecko` (browser engine) and `Gaia` (user interface) layers. `Gonk` and lower contain proprietary bits like hardware drivers and RIL and are therefor not build by Mozilla.
 
-For a full `base image flash` check [Flame software updates](https://developer.mozilla.org/en-US/Firefox_OS/Developer_phone_guide/Flame/Updating_your_Flame) on MDN.
+## FAQ
+Please read this questions before use the tool or submit an issue.
 
-### What are the alternatives?
+### What devices can be updated with this tool?
+TBD
 
-* **Download Gecko and Gaia from the [Mozilla B2G Nightly FTP](http://ftp.mozilla.org/pub/mozilla.org/b2g/nightly/)** and use [shallow_flash.sh](https://github.com/Mozilla-TWQA/B2G-flash-tool/blob/master/shallow_flash.sh) to flash the packages on your phone.
-* **[Build Gecko and Gaia](https://developer.mozilla.org/en-US/Firefox_OS/Building) from source** and [flash them](https://developer.mozilla.org/en-US/Firefox_OS/Installing_on_a_mobile_device) on your phone.
+### Why my device is not listed to be updated?
+TBD
+
+### My device fails at update
+TBD
 
 ## Dependencies
 
@@ -41,32 +43,29 @@ For a full `base image flash` check [Flame software updates](https://developer.m
 
 ## Installation
 
-Use the `flash-b2g` command as [global NPM](http://blog.nodejs.org/2011/03/23/npm-1-0-global-vs-local-installation) command:
+Use the `fxosbuilds` command as [global NPM](http://blog.nodejs.org/2011/03/23/npm-1-0-global-vs-local-installation) command:
 
 ```bash
-> npm install -g flash-b2g
+> npm install -g fxosbuilds
 ```
 
 ## Usage
 
 ```bash
-> flash-b2g --help
+> fxosbuilds --help
 
-Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build server (http://ftp.mozilla.org/pub/mozilla.org/b2g/nightly/).
-Usage: flash-b2g [device] [channel=central]
+CLI tool for FxOSBuilds updates.
+Usage: fxosbuilds [device] [version=central]
 
 Examples:
-  flash-b2g flame-kk 2.0                    Flash a flame with 2.0 build.
-  flash-b2g flame-kk --folder ~/            Flash a flame with a nightly build (downloaded to ~/)
-  flash-b2g flame-kk --folder ~/ --local    Flash a Flame device with a previously downloaded build in ~/.
-  flash-b2g hamachi aurora --eng            Flash an Hamachi device with an aurora engineering build.
-
+  fxosbuilds zte-open 2.0                          Flash a ZTE Open with 2.0 build.
+  fxosbuilds alcatel-one-touch-fire --folder ~/    Flash an Alcatel One Touch Fire with a nightly build (downloaded to ~/)
+  fxosbuilds zte-open --folder ~/ --local          Flash a ZTE Open device with a previously downloaded build in ~/.
 
 Options:
-  --device, -i     Device (flame-kk [kitkat base image], flame, helix, hamachi, …)
-  --channel, -c    Channel (central, aurora, 1.4, …)                                [default: "central"]
+  --device, -i     Device (zte-open, alcatel-one-touch-fire)
+  --version, -c    Version (central, aurora, 1.4, …)                                [default: "2.0"]
   --date, -t       Build date (for regression window testing)                       [default: "latest"]
-  --eng, -e        Engineering build (for marionette testing)
   --dir, -d        Directory to keep downloads (defaults to temp)
   --local, -l      Use local files, skipping FTP (requires --dir)
   --profile, -p    Keep profile (no promises)
@@ -94,3 +93,6 @@ Settings:
 * `'screen.timeout': 600` 10min screen timeout
 * `'lockscreen.locked': false` Unlock screen on launch
 * `'lockscreen.enabled': false` Disable lockscreen
+
+## Credits
+This tool is based on [Harald Kirschner](https://github.com/digitarald) work done on [flash-b2g](https://github.com/digitarald/flash-b2g). Thanks so much for all you work making that tool. All the credits and eforts goes to you, we only change a few things to adapt it to our needs.
