@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#! /usr/bin/env node
 
 'use strict';
 
@@ -36,33 +36,30 @@ function promisify(fn) {
 }
 
 // Command-line arguments
-var yarg = yargs.usage('Flash/Update your Firefox OS devices from FxOSBuilds public build server (http://downloads.firefoxosbuilds.org/).\nUsage: fxosbuilds [device] [channel=central]')
-	.example('$0 inari stable', 'Flash a inari with stable build.')
-	.example('$0 inari --dir ~/', 'Flash a inari with a nightly build (downloaded to ~/)')
-	.example('$0 inari --dir ~/ --local', 'Flash a inari device with a previously downloaded build in ~/.')
-	.example('$0 hamachi aurora --eng', 'Flash an hamachi device with an aurora engineering build.')
-	.string([1, 'device', 'channel', 'date'])
+var yarg = yargs.usage('CLI tool for FxOSBuilds updates.\nUsage: fxosbuilds [device] [version=central]')
+	.example('$0 zte-open 2.0', 'Flash a flame with 2.0 build.')
+	.example('$0 alcatel-one-touch-fire --folder ~/', 'Flash an Alcatel One Touch Fire with a nightly build (downloaded to ~/)')
+	.example('$0 zte-open --folder ~/ --local', 'Flash a Flame device with a previously downloaded build in ~/.')
+	.string([1, 'device', 'version', 'date'])
 	.alias({
 		'dir': 'd',
-		'channel': 'c',
+		'version': 'v',
 		'device': 'i',
 		'date': 't',
 		'local': 'l',
-		'eng': 'e',
 		'profile': 'p',
 		'remotify': 'r',
 		'help': 'h'
 	})
-	.boolean(['eng', 'local', 'profile', 'help', 'remotify', 'help', 'only-remotify'])
+	.boolean([ 'local', 'profile', 'help', 'remotify', 'help', 'only-remotify'])
 	.default({
-		channel: 'central',
+		version: '2.0',
 		date: 'latest'
 	})
 	.describe({
-		device: 'Device (flame, helix, hamachi, …)',
-		channel: 'Channel (central, aurora, 1.4, …)',
+		device: 'Device (zte-open, alcatel-one-touch-fire)',
+		version: 'Version (central, aurora, 1.4, …)',
 		date: 'Build date (for regression window testing)',
-		eng: 'Engineering build (for marionette testing)',
 		dir: 'Directory to keep downloads (defaults to temp)',
 		local: 'Use local files, skipping FTP (requires --dir)',
 		profile: 'Keep profile (no promises)',
@@ -73,9 +70,14 @@ var yarg = yargs.usage('Flash/Update your Firefox OS devices from FxOSBuilds pub
 	.strict();
 
 var argv = yarg.argv;
-
-// fxosbuilds [device]
 argv.device = (argv._[0] || argv.device || '').toLowerCase();
+
+if (argv.device === 'zte-open') {
+	console.log('Link to guide here');
+} else if (argv.device === 'alcatel-one-touch-fire') {
+	console.log('Link to guide here');
+}
+
 if (argv.help || (!argv.device && !argv['only-remotify'])) {
 	console.log(yarg.help());
 	if (!argv.device) {
@@ -84,13 +86,12 @@ if (argv.help || (!argv.device && !argv['only-remotify'])) {
 	process.exit();
 }
 
-// fxosbuilds [channel]
-argv.channel = String(argv._[1] || argv.channel);
-if (/^\d+$/.test(argv.channel)) {
-	argv.channel += '.0';
+argv.version = String(argv._[1] || argv.version);
+
+if (/^\d+$/.test(argv.version)) {
+	argv.version += '.0';
 }
 
-// fxosbuilds [date]
 if (argv.date && argv.date != 'latest') {
 	argv.date = moment(argv.date);
 	if (!argv.date.isValid()) {
@@ -99,33 +100,16 @@ if (argv.date && argv.date != 'latest') {
 } else {
 	argv.date = null;
 }
+
 var env = process.env;
 
 // Constants
-var FTP_HOST_FXOSBUILDS = 'downloads.firefoxosbuilds.org';
 var FTP_HOST = 'ftp.mozilla.org';
 var FTP_URL = 'http://' + FTP_HOST;
-
-// We have a different path for every device
-// Define stable paths for every device
-var FTP_PATH_INARI_S = '/inari/stable/';
-var FTP_PATH_HAMACHI_S = '/hamachi/stable/';
-var FTP_PATH_LEO_S = '/leo/stable/';
-var FTP_PATH_HELIX_S = '/helix/stable/';
-var FTP_PATH_FLATFISH_S = '/flatfish/stable/';
-// Define nightly paths
 var FTP_PATH = '/pub/mozilla.org/b2g/nightly/';
-var FTP_PATH_INARI_N = '/inari/nightly/';
-var FTP_PATH_HAMACHI_N = '/hamachi/nightly/';
-var FTP_PATH_LEO_N = '/leo/nightly/';
-var FTP_PATH_HELIX_N = '/helix/nightly/';
-var FTP_PATH_FLATFISH_N = '/flatfish/nightly/';
-
-// Path for flash, root and tools
 var SCRIPT_PATH = path.join(__dirname, 'scripts');
 var FLASH_SCRIPT_PATH = path.join(SCRIPT_PATH, 'shallow_flash.sh');
 var BACKUP_SCRIPT_PATH = path.join(SCRIPT_PATH, 'backup_restore_profile.sh');
-
 var TIMEOUT = 60 * 60 * 1000; // 1min
 var ADB = process.env.ADB || 'adb';
 
@@ -133,6 +117,7 @@ var ADB = process.env.ADB || 'adb';
 temp.track();
 var tempDir = temp.mkdirSync('flash-b2g');
 var dir = argv.dir;
+
 if (!dir) {
 	dir = tempDir;
 } else {
@@ -142,6 +127,7 @@ if (!dir) {
 		console.log('Created directory: %s', dir)
 	}
 }
+
 var profileDir = path.join(dir, 'flash-b2g-profile');
 // At least on linux bash, getopt defines that optional arguments need to be
 // like "--opt=arg".  Only required arguments can do "--opt arg".
@@ -161,17 +147,15 @@ if (argv['only-remotify']) {
 }
 
 var dateBit = (argv.date) ? argv.date.format('YYYY-MM-DD') : 'latest';
-var channelBit = argv.channel;
-if (/\d/.test(channelBit)) {
-	channelBit = '.*v' + channelBit.replace(/\./, '_');
+var versionBit = argv.version;
+if (/\d/.test(versionBit)) {
+	versionBit = '.*v' + versionBit.replace(/\./, '_');
 }
-var pathBits = [dateBit, '.*', channelBit, argv.device];
-var nameBits = [argv.device, channelBit];
-if (argv.eng) {
-	pathBits.push('eng');
-	nameBits.push('eng');
-}
+
+var pathBits = [dateBit, '.*', versionBit, argv.device];
+var nameBits = [argv.device, versionBit];
 nameBits.push(dateBit);
+
 var pathMatch = new RegExp('^' + pathBits.join('-') + '$', 'i');
 var ftpPath = FTP_PATH;
 
@@ -211,20 +195,6 @@ function setDeveloperPrefs() {
 		].join(' && '));
 	})
 
-	// Push preferences
-	.then(function pushPreferences() {
-		var cmds = ['cd /data/b2g/mozilla/*.default/']
-			.concat(Object.keys(prefs).map(function(key) {
-				return 'echo \'user_pref(' + JSON.stringify(key) + ', ' +
-					JSON.stringify(prefs[key]) + ');\' >> prefs.js';
-			})).join(' && ');
-		console.log('Appending to prefs.js:\n', prefs);
-		return promisify(childProcess.exec, ADB + ' shell "' +
-			cmds.replace(/"/g, '\\"') + '"', {
-				maxBuffer: 524288
-			});
-	})
-
 	// Fetch settings.json
 	.then(function pullSettings() {
 		return promisify(childProcess.exec, ADB + ' shell cat /system/b2g/defaults/settings.json', {
@@ -245,6 +215,20 @@ function setDeveloperPrefs() {
 			ADB + ' push ' + settingsPath + ' /system/b2g/defaults/settings.json',
 			ADB + ' shell mount -o ro,remount /system'
 		].join(' && '));
+	})
+
+	// Push preferences
+	.then(function pushPreferences() {
+		var cmds = ['cd /data/b2g/mozilla/*.default/']
+			.concat(Object.keys(prefs).map(function(key) {
+				return 'echo \'user_pref(' + JSON.stringify(key) + ', ' +
+					JSON.stringify(prefs[key]) + ');\' >> prefs.js';
+			})).join(' && ');
+		console.log('Appending to prefs.js:\n', prefs);
+		return promisify(childProcess.exec, ADB + ' shell "' +
+			cmds.replace(/"/g, '\\"') + '"', {
+				maxBuffer: 524288
+			});
 	})
 
 	// Restart B2G
@@ -277,7 +261,7 @@ function download() {
 			return pathMatch.test(file.name);
 		});
 		if (!files.length) {
-			throw new Error('Could not find a directory matching ' + pathMatch + '.\nVerify your --device, --channel or --date argument and that a matching directory exists on the Mozilla FTP:\n' + FTP_URL + ftpPath);
+			throw new Error('Could not find a directory matching ' + pathMatch + '.\nVerify your --device, --version or --date argument and that a matching directory exists on the Mozilla FTP:\n' + FTP_URL + ftpPath);
 		}
 		return files[0].name;
 	})
@@ -437,9 +421,9 @@ Promise.resolve().then(function() {
 
 // Listo!
 .then(function() {
-	console.log('✓ %s flashed to %s!'.bold.green, argv.device, argv.channel);
+	console.log('✓ %s flashed to %s!'.bold.green, argv.device, argv.version);
 	process.exit();
 }, function(err) {
-	console.error(String(err).bold.red);
+	console.error(String(err).bold.red, err);
 	process.exit(1);
 });

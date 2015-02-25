@@ -1,8 +1,8 @@
-# FxOSBuilds cli installer
+# Flash B2G
 
-CLI installer to manage/install/update/download builds from FxOSBuilds site.  Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build server with just one command.
+Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build server with just one command.
 
-[![NPM version](http://img.shields.io/npm/v/fxosbuilds.svg?style=flat)](https://www.npmjs.org/package/fxosbuilds)
+[![NPM version](http://img.shields.io/npm/v/flash-b2g.svg?style=flat)](https://www.npmjs.org/package/flash-b2g)
 [![Dependency Status](http://img.shields.io/gemnasium/digitarald/flash-b2g.svg?style=flat)](https://gemnasium.com/digitarald/flash-b2g)
 
 ## What does it do?
@@ -13,10 +13,7 @@ CLI installer to manage/install/update/download builds from FxOSBuilds site.  Sh
 ### Shallow flash?
 
 ```
-+-----------+
-|         ⊙ |
--------------
-|           |
++-------=---+
 |   Gaia    | ]                ]
 |  -------  | ]- Shallow flash ]
 |   Gecko   | ]                ]- Base image flash
@@ -28,86 +25,54 @@ CLI installer to manage/install/update/download builds from FxOSBuilds site.  Sh
 +-----------+
 ```
 
-We just flash only Gaia and Gecko.
+Firefox OS has [three layers](http://en.wikipedia.org/wiki/Firefox_OS#Core_technologies), where most development happens in the `Gecko` (browser engine) and `Gaia` (user interface) layers. `Gonk` and lower contain proprietary bits like hardware drivers and RIL and are therefor not build by Mozilla.
 
-### Why shallow updates and not full updates?
-
-Firefox OS has [three layers](http://en.wikipedia.org/wiki/Firefox_OS#Core_technologies), where most development happens in the `Gecko` (browser engine) and `Gaia` (user interface) layers. `Gonk` and lower contain proprietary bits like hardware drivers and RIL and are therefor not build by Mozilla, those proprietary bits (blobs) has copyright. So, thats why we cannot distribute full updates to be installed by CWM or Fastboot. 
-
-*Thank you copyright :)* 
+For a full `base image flash` check [Flame software updates](https://developer.mozilla.org/en-US/Firefox_OS/Developer_phone_guide/Flame/Updating_your_Flame) on MDN.
 
 ### What are the alternatives?
 
+* **Download Gecko and Gaia from the [Mozilla B2G Nightly FTP](http://ftp.mozilla.org/pub/mozilla.org/b2g/nightly/)** and use [shallow_flash.sh](https://github.com/Mozilla-TWQA/B2G-flash-tool/blob/master/shallow_flash.sh) to flash the packages on your phone.
 * **[Build Gecko and Gaia](https://developer.mozilla.org/en-US/Firefox_OS/Building) from source** and [flash them](https://developer.mozilla.org/en-US/Firefox_OS/Installing_on_a_mobile_device) on your phone.
 
 ## Dependencies
 
 * [Node 10.x](http://nodejs.org/download/)
+* [ADB](http://developer.android.com/tools/help/adb.html) from the [Android SDK](http://developer.android.com/sdk/index.html)
 
 ## Installation
 
-Use the `fxosbuilds` command as [global NPM](http://blog.nodejs.org/2011/03/23/npm-1-0-global-vs-local-installation) command:
+Use the `flash-b2g` command as [global NPM](http://blog.nodejs.org/2011/03/23/npm-1-0-global-vs-local-installation) command:
 
 ```bash
-> npm install -g fxosbuilds
+> npm install -g flash-b2g
 ```
-
-## How my device is named?
-
-Check the table and remplace with the codename of your device:
-
-+---------------------------+-------------+
-|          Device           |   Codename  |
-+-------------+-------------+-------------+
-|         ZTE Open          |    inari    |
-|   Alcatel One Touch Fire  |    hamachi  |
-|        LG Fireweb         |     leo     |
-|        Huawei Y300        |    helix    |
-|      inFocus Tablet       |   flatfish  |
-+---------------------------+-------------+
-
-Usage:
-
-* **Ej: Your device is a ZTE Open**
-```bash
-> fxosbuild inari
-```
-
-* **Ej: Your device is an Alcatel One Touch Fire**
-```bash
-> fxosbuild hamachi
-```
-
-* **Ej: Your device is a inFocus Tablet**
-```bash
-> fxosbuild flatfish
-```
-
 
 ## Usage
 
 ```bash
-> fxosbuilds --help
+> flash-b2g --help
 
-Flash/Update your Firefox OS devices from FxOSBuilds public build server (http://downloads.firefoxosbuilds.org/).
-Usage: fxosbuilds [device] [channel]
+Shallow-flash Gecko and Gaia on Firefox OS devices from Mozilla's public build server (http://ftp.mozilla.org/pub/mozilla.org/b2g/nightly/).
+Usage: flash-b2g [device] [channel=central]
 
 Examples:
-  fxosbuilds inari stable                 Flash a inari with stable build.
-  fxosbuilds inari --folder ~/            Flash a inari with a nightly build (downloaded to ~/)
-  fxosbuilds inari --folder ~/ --local    Flash a inari device with a previously downloaded build in ~/.
-  fxosbuilds hamachi aurora --eng         Flash an hamachi device with an aurora engineering build.
+  flash-b2g flame-kk 2.0                    Flash a flame with 2.0 build.
+  flash-b2g flame-kk --folder ~/            Flash a flame with a nightly build (downloaded to ~/)
+  flash-b2g flame-kk --folder ~/ --local    Flash a Flame device with a previously downloaded build in ~/.
+  flash-b2g hamachi aurora --eng            Flash an Hamachi device with an aurora engineering build.
 
 
 Options:
-  --device, -i    Device (flame, helix, hamachi, …)       [default: "flame"]
-  --channel, -c   Channel (central, aurora, 1.4, …)       [default: "central"]
-  --date, -t      Build date (regression window testing)  [default: "latest"]
-  --eng, -e       Engineering build (marionette testing)
-  --local, -l     Use local files, skipping FTP
-  --profile, -p   Keep profile (no promises)
-  --remotify, -r  Set device into development mode
-  --help          Show this help
+  --device, -i     Device (flame-kk [kitkat base image], flame, helix, hamachi, …)
+  --channel, -c    Channel (central, aurora, 1.4, …)                                [default: "central"]
+  --date, -t       Build date (for regression window testing)                       [default: "latest"]
+  --eng, -e        Engineering build (for marionette testing)
+  --dir, -d        Directory to keep downloads (defaults to temp)
+  --local, -l      Use local files, skipping FTP (requires --dir)
+  --profile, -p    Keep profile (no promises)
+  --remotify, -r   Set device into development mode
+  --only-remotify  Skip flashing, only set development mode
+  --help, -h       Show this help
 ```
 
 ### Settings for `--remotify`
@@ -129,7 +94,3 @@ Settings:
 * `'screen.timeout': 600` 10min screen timeout
 * `'lockscreen.locked': false` Unlock screen on launch
 * `'lockscreen.enabled': false` Disable lockscreen
-
-## Thanks
-
-This cli was inspired on the [digitarald work](https://github.com/digitarald/flash-b2g). Many thanks to him and his idea to wrap scripts with nodejs.
